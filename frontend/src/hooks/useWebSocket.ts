@@ -56,7 +56,21 @@ interface WSState {
   connected: boolean;
 }
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws/broadcast";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+function buildWsUrl(): string {
+  const rawWs = (process.env.NEXT_PUBLIC_WS_URL || "").trim();
+
+  if (rawWs) {
+    const base = rawWs.replace(/\/+$/, "");
+    return base.endsWith("/ws/broadcast") ? base : `${base}/ws/broadcast`;
+  }
+
+  const fromApi = API_URL.replace(/^http:/, "ws:").replace(/^https:/, "wss:").replace(/\/+$/, "");
+  return `${fromApi}/ws/broadcast`;
+}
+
+const WS_URL = buildWsUrl();
 
 export function useWebSocket() {
   const [state, setState] = useState<WSState>({
