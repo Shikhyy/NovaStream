@@ -1,65 +1,98 @@
-# NovaStream 24/7 — The Infinite Broadcast
+# 🌌 NovaStream 24/7 — The Infinite Broadcast
 
-Fully autonomous AI-powered television network. Without any human intervention, it continuously monitors the internet for trending news headlines, transforms them into short-form video episodes with cinematic structure, voiceover narration, and music — then broadcasts them live via a web player.
+<p align="center">
+  <b>Fully autonomous AI-powered television network.</b><br>
+  Without any human intervention, NovaStream continuously monitors the internet for trending news headlines, transforms them into short-form video episodes with cinematic structure, voiceover narration, and music — then broadcasts them live via a web player.
+</p>
 
-## Architecture
+---
 
+## 🏗 Architecture
+
+NovaStream operates using a multi-agent backend architecture tightly integrated with **AWS Bedrock** and **Supabase**, broadcasting directly to a visually stunning **Next.js** frontend via WebSockets.
+
+```mermaid
+graph LR
+    A[Headlines API] --> B[Showrunner]
+    B --> C[Casting + Voice]
+    C --> D[Editor/FFmpeg]
+    D --> E[Broadcaster]
+    E --> F[Supabase Storage]
+    E --> G[WebSocket Server]
+    G --> H[Next.js Live Player]
 ```
-┌──────────────────────────────────────────────────────────┐
-│                    NovaStream Pipeline                     │
-│                                                           │
-│  Headlines ──► Showrunner ──► Casting + Voice ──► Editor  │
-│   (RSS/API)   (Nova 2 Lite)  (Embeddings) (Sonic) (FFmpeg)│
-│                                                           │
-│  ──► Broadcaster ──► WebSocket ──► Next.js Frontend       │
-│       (FastAPI)       (Real-time)   (Live Player)         │
-└──────────────────────────────────────────────────────────┘
-```
 
-### Agent Pipeline
+### 🤖 The Agent Pipeline
 
-| Agent | Role | Nova Model |
-|-------|------|------------|
-| **Showrunner** | Generates production blueprint JSON from headline | Nova 2 Lite |
-| **Casting Director** | Matches scenes to stock video via embedding similarity | Nova Multimodal Embeddings |
-| **Voice Actor** | Synthesizes voiceover narration per scene | Nova 2 Sonic |
-| **Editor** | Stitches video + audio into final episode via FFmpeg | — |
+| Agent | Role | AI Model / Tech |
+|-------|------|-----------------|
+| **Showrunner** | Generates production blueprint JSON from headline | Amazon Nova 2 Lite |
+| **Casting Director** | Matches scenes to stock video via semantic matching | Nova Multimodal Embeddings |
+| **Voice Actor** | Synthesizes voiceover narration per scene | Amazon Nova 2 Sonic |
+| **Editor** | Stitches video + audio into final episode via FFmpeg | FFmpeg |
 
-## Tech Stack
+---
 
-- **Backend**: Python, FastAPI, asyncio, boto3
-- **Frontend**: Next.js 14, Tailwind CSS, WebSocket
-- **AI Models**: Amazon Nova 2 Lite, Nova Multimodal Embeddings, Nova 2 Sonic (via Bedrock)
-- **Video**: FFmpeg, Pexels API (CC0 stock footage)
-- **Deployment**: Docker, AWS EC2, S3, CloudFront
+## ☁️ How AWS is Used in NovaStream
 
-## Quick Start
+NovaStream relies heavily on **Amazon Web Services (AWS)** to power its core artificial intelligence logic. The entire agentic workflow is built around the **Amazon Bedrock** ecosystem to leverage the cutting-edge **Amazon Nova** foundation models.
+
+Here is how AWS is utilized:
+
+1. **Amazon Nova 2 Lite (`amazon.nova-2-lite-v1:0`)**:
+   - Used by the **Showrunner Agent** to dynamically act as a TV producer. It takes a raw news headline and generates a structured, multi-scene production blueprint (JSON format) containing scripts, visual cues, and narrations.
+2. **Amazon Nova Multimodal Embeddings (`amazon.nova-2-multimodal-embeddings-v1:0`)**:
+   - Used by the **Casting Director Agent** to semantically map the Showrunner's visual descriptions to real-world stock footage from Pexels, ensuring highly relevant and context-aware B-roll video.
+3. **Amazon Nova 2 Sonic (`amazon.nova-2-sonic-v1:0`)**:
+   - Used by the **Voice Actor Agent** for hyper-realistic Text-to-Speech (TTS) synthesis. It breathes life into the Showrunner's script, voicing the news broadcast scene-by-scene.
+4. **AWS Identity and Access Management (IAM)**:
+   - For secure, scalable access, NovaStream connects to Bedrock using either short-term STS credentials or long-term IAM API credentials via `boto3`.
+
+> **💡 Cost Savings & Local Fallbacks:**
+> To ensure AWS Bedrock credits remain predictable during development, NovaStream features built-in **Low-Cost Modes**. You can cap the number of generated scenes per episode (`NOVA_MAX_SCENES_PER_EPISODE`) or disable heavy embedding calls (`USE_NOVA_EMBEDDINGS=false`).
+
+---
+
+## 💻 Tech Stack
+
+- **Backend**: Python 3.11+, FastAPI, WebSockets, FFmpeg, Asyncio
+- **Frontend**: Next.js 14, React, Tailwind CSS
+- **AI / Cloud Services**: Amazon Bedrock (Nova family), Boto3
+- **Storage**: Supabase Storage (Migrated from static S3)
+- **External APIs**: Pexels Video API, NewsAPI
+- **Deployment**: Docker, docker-compose
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
-
 - Python 3.11+
 - Node.js 20+
-- FFmpeg 6.0+
-- AWS credentials with Bedrock access
-- Pexels API key (free at pexels.com)
+- **FFmpeg 6.0+** installed locally (`brew install ffmpeg`)
+- **AWS API Keys** (with `us-east-1` Bedrock Nova access)
+- **Supabase Service Key**
+- **Pexels API Key**
 
-### 1. Clone & Configure
-
+### 1. Configuration
+Clone the repository and configure your environment variables securely:
 ```bash
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env with your specific AWS, Supabase, and Pexels keys.
 ```
+*(Note: Your `.env` file is safely ignored by Git to prevent accidental AWS key leaks).*
 
-### 2. Backend
-
+### 2. Start the Backend
 ```bash
 cd backend
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 python main.py
 ```
 
-### 3. Frontend
-
+### 3. Start the Frontend Live Player
+In a new terminal:
 ```bash
 cd frontend
 npm install
@@ -67,52 +100,15 @@ npm run dev
 ```
 
 ### 4. Docker (Alternative)
-
+Run everything natively:
 ```bash
 docker-compose up --build
 ```
+Open [http://localhost:3000](http://localhost:3000) to view the live infinite broadcast!
 
-Open http://localhost:3000 to view the broadcast.
+---
 
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `AWS_ACCESS_KEY_ID` | AWS credentials |
-| `AWS_SECRET_ACCESS_KEY` | AWS credentials |
-| `AWS_DEFAULT_REGION` | AWS region (default: us-east-1) |
-| `PEXELS_API_KEY` | Pexels stock video API key |
-| `NEWSAPI_KEY` | NewsAPI key (optional, has RSS fallback) |
-| `S3_BUCKET` | S3 bucket for episode storage |
-| `CLOUDFRONT_DOMAIN` | CloudFront distribution domain |
-
-## Project Structure
-
-```
-novastream/
-├── backend/
-│   ├── main.py              # FastAPI app + WebSocket server
-│   ├── pipeline.py          # Master loop + agent orchestration
-│   ├── agents/
-│   │   ├── showrunner.py    # Agent 1: Nova 2 Lite blueprint gen
-│   │   ├── casting.py       # Agent 2: Nova Embeddings + Pexels
-│   │   ├── voice.py         # Agent 3: Nova 2 Sonic TTS
-│   │   └── editor.py        # Agent 4: FFmpeg stitch + upload
-│   ├── models.py            # Pydantic schemas
-│   ├── news.py              # RSS/NewsAPI headline fetcher
-│   └── broadcaster.py       # WebSocket push + S3 upload
-├── frontend/                # Next.js 14 app
-│   ├── src/app/page.tsx     # Main broadcast page
-│   ├── src/components/      # UI components
-│   └── src/hooks/           # WebSocket hook
-└── docker-compose.yml
-```
-
-## Prize Categories
-
-- **Primary**: Agentic AI — Multi-agent orchestration with visible state transitions
-- **Secondary**: Multimodal Understanding — Nova Embeddings for scene-to-video semantic matching
-
-## License
-
-Built for Amazon Nova AI Hackathon — March 2026.
+## 🏆 Hackathon Categories
+Built for the **Amazon Nova AI Hackathon — March 2026**.
+- **Agentic AI**: Multi-agent orchestration with autonomous state transitions.
+- **Multimodal Understanding**: Cross-model pipeline using Nova Lite text generation, Sonic TTS, and Embeddings for full A/V production.
