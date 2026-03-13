@@ -22,6 +22,9 @@ NOVA_EMBEDDINGS_MODEL_ID = os.getenv(
 )
 AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "")
+USE_NOVA_EMBEDDINGS = os.getenv("USE_NOVA_EMBEDDINGS", "false").lower() in {
+    "1", "true", "yes", "on"
+}
 
 # Cache for Pexels search results and their embeddings
 _pexels_cache: dict[str, List[dict]] = {}
@@ -109,7 +112,9 @@ async def run_casting(job: EpisodeJob, broadcast_log) -> EpisodeJob:
         return job
 
     scene_assets: List[SceneAsset] = []
-    use_embeddings = True
+    use_embeddings = USE_NOVA_EMBEDDINGS and bool(PEXELS_API_KEY)
+    if not use_embeddings and PEXELS_API_KEY:
+        await broadcast_log("CASTING", "info", "Nova embeddings disabled; using keyword matching mode")
 
     for scene in job.blueprint.scenes:
         try:

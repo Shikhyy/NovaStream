@@ -16,6 +16,9 @@ logger = logging.getLogger("novastream.showrunner")
 
 NOVA_LITE_MODEL_ID = os.getenv("NOVA_LITE_MODEL_ID", "amazon.nova-2-lite-v1:0")
 AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
+SHOWRUNNER_MAX_RETRIES = max(1, int(os.getenv("SHOWRUNNER_MAX_RETRIES", "1")))
+SHOWRUNNER_MAX_TOKENS = max(200, int(os.getenv("SHOWRUNNER_MAX_TOKENS", "500")))
+SHOWRUNNER_TEMPERATURE = float(os.getenv("SHOWRUNNER_TEMPERATURE", "0.4"))
 
 SYSTEM_PROMPT = """You are a TV show producer. Given a news headline, create a Production Blueprint for a 60-second video episode.
 
@@ -50,7 +53,7 @@ async def run_showrunner(job: EpisodeJob, broadcast_log) -> EpisodeJob:
     await broadcast_log("SHOWRUNNER", "info", f"Generating blueprint for: {job.source_headline}")
 
     last_error = ""
-    for attempt in range(3):
+    for attempt in range(SHOWRUNNER_MAX_RETRIES):
         try:
             user_prompt = f"Create a Production Blueprint for this headline:\n\n\"{job.source_headline}\""
             if last_error:
@@ -67,8 +70,8 @@ async def run_showrunner(job: EpisodeJob, broadcast_log) -> EpisodeJob:
                 }],
                 system=[{"text": SYSTEM_PROMPT}],
                 inferenceConfig={
-                    "temperature": 0.7,
-                    "maxTokens": 800,
+                    "temperature": SHOWRUNNER_TEMPERATURE,
+                    "maxTokens": SHOWRUNNER_MAX_TOKENS,
                 },
             )
 
@@ -95,15 +98,15 @@ async def run_showrunner(job: EpisodeJob, broadcast_log) -> EpisodeJob:
 
         except json.JSONDecodeError as e:
             last_error = f"Invalid JSON: {e}"
-            await broadcast_log("SHOWRUNNER", "warn", f"Attempt {attempt+1}/3 failed: {last_error}")
+            await broadcast_log("SHOWRUNNER", "warn", f"Attempt {attempt+1}/{SHOWRUNNER_MAX_RETRIES} failed: {last_error}")
         except Exception as e:
             last_error = str(e)
-            await broadcast_log("SHOWRUNNER", "warn", f"Attempt {attempt+1}/3 failed: {last_error}")
+            await broadcast_log("SHOWRUNNER", "warn", f"Attempt {attempt+1}/{SHOWRUNNER_MAX_RETRIES} failed: {last_error}")
 
     # All retries exhausted — use fallback blueprint
     await broadcast_log("SHOWRUNNER", "error", "All retries failed. Using fallback blueprint.")
     job.blueprint = _fallback_blueprint(job.source_headline)
-    job.error_log.append(f"Showrunner failed after 3 attempts: {last_error}")
+    job.error_log.append(f"Showrunner failed after {SHOWRUNNER_MAX_RETRIES} attempts: {last_error}")
     return job
 
 

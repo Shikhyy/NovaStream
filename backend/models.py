@@ -22,7 +22,7 @@ class Scene(BaseModel):
 class Blueprint(BaseModel):
     title: str = Field(max_length=80)
     tone: Literal["dramatic", "satirical", "documentary"]
-    scenes: List[Scene] = Field(min_length=4, max_length=4)
+    scenes: List[Scene] = Field(min_length=1, max_length=4)
 
 
 # --- Asset models (Agent 2 & 3 output) ---

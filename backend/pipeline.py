@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 import logging
+import os
 from datetime import datetime
 from typing import List
 
@@ -22,6 +23,7 @@ logger = logging.getLogger("novastream.pipeline")
 episode_queue: List[EpisodeJob] = []
 current_episode: EpisodeJob | None = None
 pipeline_running = False
+MAX_SCENES_PER_EPISODE = max(1, min(4, int(os.getenv("NOVA_MAX_SCENES_PER_EPISODE", "2"))))
 
 
 async def broadcast_log(agent_id: str, level: str, message: str):
@@ -55,6 +57,14 @@ async def produce_episode() -> EpisodeJob:
         job.status = EpisodeStatus.FAILED
         await broadcast_log("PIPELINE", "error", "Pipeline aborted: no blueprint")
         return job
+
+    if len(job.blueprint.scenes) > MAX_SCENES_PER_EPISODE:
+        job.blueprint.scenes = job.blueprint.scenes[:MAX_SCENES_PER_EPISODE]
+        await broadcast_log(
+            "PIPELINE",
+            "info",
+            f"Low-credit mode: using {MAX_SCENES_PER_EPISODE} scene(s) per episode",
+        )
 
     # Step 2 & 3: Casting + Voice in parallel (Agents 2 & 3)
     await broadcast_log("PIPELINE", "info", "Running Casting + Voice agents in parallel...")
