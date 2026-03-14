@@ -23,24 +23,34 @@ export default function Home() {
 
   if (!connected) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#030B12] gap-6">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#030912] gap-8 overflow-hidden relative">
+        {/* Expanding rings */}
+        <div className="absolute w-56 h-56 rounded-full border border-[#0EA5E9]/15 animate-ring-expand" />
+        <div className="absolute w-56 h-56 rounded-full border border-[#0EA5E9]/10 animate-ring-expand [animation-delay:0.85s]" />
+        <div className="absolute w-56 h-56 rounded-full border border-[#0EA5E9]/8 animate-ring-expand [animation-delay:1.7s]" />
+
         {/* Logo */}
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-3 h-3 rounded-full bg-[#0EA5E9] animate-pulse" />
-          <span className="text-[#0EA5E9] font-barlow font-black text-2xl tracking-[8px] uppercase">
-            NOVASTREAM
+        <div className="relative flex flex-col items-center gap-2 z-10 animate-fade-up">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-[#0EA5E9] shadow-[0_0_8px_rgba(14,165,233,0.9)] animate-pulse" />
+            <span className="text-[#0EA5E9] font-barlow font-black text-3xl tracking-[10px] uppercase [text-shadow:0_0_30px_rgba(14,165,233,0.4)]">
+              NOVASTREAM
+            </span>
+            <div className="w-2 h-2 rounded-full bg-[#0EA5E9] shadow-[0_0_8px_rgba(14,165,233,0.9)] animate-pulse" />
+          </div>
+          <span className="font-barlow font-black text-[9px] tracking-[6px] text-[#2A4060] uppercase">
+            Autonomous AI Broadcast
           </span>
-          <div className="w-3 h-3 rounded-full bg-[#0EA5E9] animate-pulse" />
         </div>
 
         {/* Spinner */}
-        <div className="w-12 h-12 border-4 border-[#1E2D3D] border-t-[#0EA5E9] rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[#0EA5E9]/20 border-t-[#0EA5E9] rounded-full animate-spin z-10" />
 
-        {/* Status */}
-        <div className="flex flex-col items-center gap-2 text-center">
-          <p className="text-[#7A9AB5] text-sm font-mono">
+        {/* Status card */}
+        <div className="z-10 border border-[#1E2D3D] bg-[#0D1117]/80 px-6 py-3 rounded-sm flex flex-col items-center gap-1.5 min-w-[280px] animate-fade-up [animation-delay:150ms]">
+          <p className="text-[#7A9AB5] text-sm font-mono flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#0EA5E9] animate-pulse shrink-0" />
             Waking up the broadcast server
-            <span className="animate-pulse">...</span>
           </p>
           <p className="text-[#2A4060] text-xs font-mono">
             {elapsed < 10
@@ -52,8 +62,8 @@ export default function Home() {
               : `Almost there — ${elapsed}s elapsed`}
           </p>
           {elapsed > 15 && (
-            <p className="text-[#1A3050] text-xs font-mono mt-1">
-              First load on Render free tier can take up to 45 seconds
+            <p className="text-[#1A3050] text-xs font-mono">
+              Free tier cold start may take up to 45s
             </p>
           )}
         </div>
@@ -68,7 +78,7 @@ export default function Home() {
   ) || null;
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden">
+    <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#080B0F]">
       {/* Top Bar */}
       <GlobalTopBar
         stats={stats}
@@ -90,20 +100,20 @@ export default function Home() {
           <div className="flex border-b border-[#1E2D3D]">
             <button
               onClick={() => setSidebarTab("terminal")}
-              className={`flex-1 py-2 font-barlow font-black text-[10px] tracking-[3px] uppercase transition-colors ${
+              className={`flex-1 py-2.5 font-barlow font-black text-[10px] tracking-[3px] uppercase transition-all duration-150 ${
                 sidebarTab === "terminal"
-                  ? "text-[#0EA5E9] border-b-2 border-[#0EA5E9]"
-                  : "text-[#4A6278] hover:text-[#7A9AB5]"
+                  ? "text-[#0EA5E9] border-b-2 border-[#0EA5E9] shadow-[0_2px_8px_rgba(14,165,233,0.18)]"
+                  : "text-[#4A6278] hover:text-[#7A9AB5] hover:bg-[#0D1117]/50"
               }`}
             >
               Terminal
             </button>
             <button
               onClick={() => setSidebarTab("pipeline")}
-              className={`flex-1 py-2 font-barlow font-black text-[10px] tracking-[3px] uppercase transition-colors ${
+              className={`flex-1 py-2.5 font-barlow font-black text-[10px] tracking-[3px] uppercase transition-all duration-150 ${
                 sidebarTab === "pipeline"
-                  ? "text-[#0EA5E9] border-b-2 border-[#0EA5E9]"
-                  : "text-[#4A6278] hover:text-[#7A9AB5]"
+                  ? "text-[#0EA5E9] border-b-2 border-[#0EA5E9] shadow-[0_2px_8px_rgba(14,165,233,0.18)]"
+                  : "text-[#4A6278] hover:text-[#7A9AB5] hover:bg-[#0D1117]/50"
               }`}
             >
               Pipeline

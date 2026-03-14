@@ -25,3 +25,22 @@
   background: #4A6278;
 }
 
+/* Subtle dot-grid body background */
+body {
+  background-image: radial-gradient(circle, rgba(30, 45, 61, 0.35) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Glow text utilities */
+.text-glow-sky {
+  text-shadow: 0 0 14px rgba(14, 165, 233, 0.55), 0 0 30px rgba(14, 165, 233, 0.2);
+}
+
+.text-glow-rose {
+  text-shadow: 0 0 14px rgba(244, 63, 94, 0.55), 0 0 30px rgba(244, 63, 94, 0.2);
+}
+
+.text-glow-emerald {
+  text-shadow: 0 0 14px rgba(16, 185, 129, 0.55), 0 0 30px rgba(16, 185, 129, 0.2);
+}
+

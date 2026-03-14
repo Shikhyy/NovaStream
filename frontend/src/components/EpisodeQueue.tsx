@@ -21,7 +21,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }>
 export default function EpisodeQueue({ queue, currentEpisodeId }: Props) {
   return (
     <div className="bg-[#0D1117] border-t border-[#1E2D3D]">
-      <div className="flex items-center gap-2 px-3 py-1.5 overflow-x-auto scrollbar-thin">
+      <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto scrollbar-thin">
         <span className="font-barlow font-black text-[9px] tracking-[3px] text-[#4A6278] uppercase shrink-0">
           Queue
         </span>
@@ -39,10 +39,10 @@ export default function EpisodeQueue({ queue, currentEpisodeId }: Props) {
           return (
             <div
               key={ep.episode_id}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 border transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded shrink-0 border transition-all duration-200 ${
                 isActive
-                  ? "border-[#F43F5E]/40 bg-[#F43F5E]/5"
-                  : "border-[#1E2D3D] bg-[#111820]"
+                  ? "border-[#F43F5E]/40 bg-[#F43F5E]/5 shadow-[0_0_12px_rgba(244,63,94,0.08)]"
+                  : "border-[#1E2D3D] bg-[#0D1117] hover:border-[#2A4060] hover:bg-[#111820]"
               }`}
               title={title}
             >

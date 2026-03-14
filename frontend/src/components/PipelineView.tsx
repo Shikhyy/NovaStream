@@ -9,7 +9,7 @@ interface Props {
 
 const PIPELINE_STEPS = [
   { key: "scripting", agent: "Showrunner", model: "Nova 2 Lite", color: "#0EA5E9" },
-  { key: "casting", agent: "Casting Director", model: "Nova Embeddings", color: "#F59E0B" },
+  { key: "casting", agent: "Casting Director", model: "Pexels Smart Match", color: "#F59E0B" },
   { key: "voicing", agent: "Voice Actor", model: "Nova 2 Sonic", color: "#10B981" },
   { key: "editing", agent: "Editor", model: "FFmpeg", color: "#A78BFA" },
 ];
@@ -46,11 +46,34 @@ export default function PipelineView({ currentEpisode, stats }: Props) {
         </span>
       </div>
 
+      {/* Segmented Progress Bar */}
+      {currentEpisode && (
+        <div className="px-4 pt-3 pb-1">
+          <div className="flex gap-0.5 h-1 rounded-full overflow-hidden">
+            {PIPELINE_STEPS.map((step) => {
+              const state = getStepState(step.key, currentStatus);
+              return (
+                <div
+                  key={step.key}
+                  className={`flex-1 rounded transition-all duration-500 ${
+                    state === "active" ? "animate-pulse" : ""
+                  }`}
+                  style={{
+                    backgroundColor: state !== "pending" ? step.color : "#1E2D3D",
+                    opacity: state === "pending" ? 0.25 : 1,
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Step Indicator */}
       <div className="px-4 py-4 flex-1">
         <div className="relative">
           {/* Connecting Line */}
-          <div className="absolute left-[11px] top-3 bottom-3 w-px bg-[#1E2D3D]" />
+          <div className="absolute left-[11px] top-3 bottom-3 w-px bg-gradient-to-b from-[#1E2D3D] via-[#1B4060]/50 to-[#1E2D3D]" />
 
           {PIPELINE_STEPS.map((step) => {
             const state = getStepState(step.key, currentStatus);
@@ -66,8 +89,11 @@ export default function PipelineView({ currentEpisode, stats }: Props) {
                     </div>
                   )}
                   {state === "active" && (
-                    <div className="w-[22px] h-[22px] rounded-full border-2 border-[#F59E0B] flex items-center justify-center animate-pulse">
-                      <div className="w-2 h-2 rounded-full bg-[#F59E0B]" />
+                    <div
+                      className="w-[22px] h-[22px] rounded-full border-2 flex items-center justify-center animate-pulse"
+                      style={{ borderColor: step.color, boxShadow: `0 0 10px ${step.color}55` }}
+                    >
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: step.color }} />
                     </div>
                   )}
                   {state === "pending" && (
@@ -110,8 +136,8 @@ export default function PipelineView({ currentEpisode, stats }: Props) {
         </div>
 
         {/* Agent Model Mapping */}
-        <div className="mt-4 border border-[#1E2D3D] rounded">
-          <div className="px-2 py-1.5 border-b border-[#1E2D3D]">
+        <div className="mt-4 border border-[#1E2D3D] rounded-sm bg-[#060A0F]">
+          <div className="px-2 py-1.5 border-b border-[#1E2D3D] bg-gradient-to-r from-[#0A1628]/80 to-transparent">
             <span className="font-barlow font-black text-[9px] tracking-[2px] text-[#4A6278] uppercase">
               Nova Models
             </span>
@@ -137,11 +163,11 @@ export default function PipelineView({ currentEpisode, stats }: Props) {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[#0D1117] border border-[#1E2D3D] rounded px-2.5 py-2">
-      <p className="font-barlow font-black text-[8px] tracking-[2px] text-[#4A6278] uppercase">
+    <div className="bg-[#060A0F] border border-[#1E2D3D] rounded-sm px-3 py-2.5 hover:border-[#2A4060] transition-colors group">
+      <p className="font-barlow font-black text-[8px] tracking-[2px] text-[#4A6278] uppercase mb-1">
         {label}
       </p>
-      <p className="font-mono text-[16px] text-[#C8D6E5] mt-0.5">{value}</p>
+      <p className="font-mono text-[15px] font-medium text-[#C8D6E5] tabular-nums group-hover:text-[#E2EAF2] transition-colors">{value}</p>
     </div>
   );
 }

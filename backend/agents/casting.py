@@ -1,16 +1,13 @@
-"""Agent 2: Casting Director — Matches scenes to stock video using Nova Multimodal Embeddings + Pexels."""
+"""Agent 2: Casting Director — Matches scenes to stock video using smart Pexels ranking."""
 
 from __future__ import annotations
 
-import json
 import os
 import logging
 import re
 from typing import List
 
-import boto3
 import httpx
-import numpy as np
 from dotenv import load_dotenv
 
 from models import EpisodeJob, EpisodeStatus, SceneAsset
@@ -18,18 +15,10 @@ from models import EpisodeJob, EpisodeStatus, SceneAsset
 load_dotenv()
 logger = logging.getLogger("novastream.casting")
 
-NOVA_EMBEDDINGS_MODEL_ID = os.getenv(
-    "NOVA_EMBEDDINGS_MODEL_ID", "amazon.nova-2-multimodal-embeddings-v1:0"
-)
-AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "")
-USE_NOVA_EMBEDDINGS = os.getenv("USE_NOVA_EMBEDDINGS", "false").lower() in {
-    "1", "true", "yes", "on"
-}
 
-# Cache for Pexels search results and their embeddings
+# Cache for Pexels search results
 _pexels_cache: dict[str, List[dict]] = {}
-_embedding_cache: dict[str, List[float]] = {}
 
 
 def _extract_keywords(text: str) -> list[str]:
@@ -138,37 +127,58 @@ def _build_search_queries(scene_query: str, headline: str, scene_number: int) ->
     return queries
 
 
-def _cosine_similarity(a: List[float], b: List[float]) -> float:
-    a_arr = np.array(a)
-    b_arr = np.array(b)
-    return float(np.dot(a_arr, b_arr) / (np.linalg.norm(a_arr) * np.linalg.norm(b_arr) + 1e-9))
+def _tokenize(text: str) -> set[str]:
+    return {t for t in re.findall(r"[a-z0-9']+", text.lower()) if len(t) > 2}
 
 
-async def _get_text_embedding(text: str) -> List[float]:
-    """Get text embedding from Amazon Nova Multimodal Embeddings via invoke_model."""
-    cache_key = text.strip().lower()
-    if cache_key in _embedding_cache:
-        return _embedding_cache[cache_key]
+def _query_relevance_score(scene_query: str, candidate_query: str, headline: str) -> float:
+    scene_tokens = _tokenize(scene_query)
+    headline_tokens = _tokenize(headline)
+    candidate_tokens = _tokenize(candidate_query)
+    if not candidate_tokens:
+        return 0.0
 
-    client = boto3.client("bedrock-runtime", region_name=AWS_REGION)
+    scene_overlap = len(scene_tokens & candidate_tokens) / max(len(candidate_tokens), 1)
+    headline_overlap = len(headline_tokens & candidate_tokens) / max(len(candidate_tokens), 1)
+    return min(1.0, (0.7 * scene_overlap) + (0.3 * headline_overlap))
 
-    # Nova Multimodal Embeddings API format
-    body = json.dumps({
-        "inputText": text,
-        "embeddingConfig": {"outputEmbeddingLength": 1024}
-    })
 
-    response = client.invoke_model(
-        modelId=NOVA_EMBEDDINGS_MODEL_ID,
-        body=body,
-        contentType="application/json",
-        accept="application/json",
-    )
+def _video_quality_score(video: dict, target_duration: int) -> float:
+    width = int(video.get("width", 0) or 0)
+    height = int(video.get("height", 0) or 0)
+    duration = int(video.get("duration", 0) or 0)
 
-    result = json.loads(response["body"].read())
-    embedding = result["embedding"]
-    _embedding_cache[cache_key] = embedding
-    return embedding
+    if width <= 0 or height <= 0:
+        resolution_score = 0.0
+        aspect_score = 0.0
+    else:
+        resolution_score = min(1.0, (width * height) / float(1920 * 1080))
+        aspect_ratio = width / max(height, 1)
+        aspect_delta = abs(aspect_ratio - (16 / 9))
+        aspect_score = max(0.0, 1.0 - (aspect_delta / 1.2))
+
+    if duration <= 0:
+        duration_score = 0.5
+    else:
+        delta = abs(duration - target_duration)
+        duration_score = max(0.0, 1.0 - (delta / max(target_duration, 1)))
+
+    return (0.5 * resolution_score) + (0.2 * aspect_score) + (0.3 * duration_score)
+
+
+def _ranked_video_score(
+    *,
+    scene_query: str,
+    candidate_query: str,
+    headline: str,
+    target_duration: int,
+    video: dict,
+    already_used: bool,
+) -> float:
+    query_score = _query_relevance_score(scene_query, candidate_query, headline)
+    quality_score = _video_quality_score(video, target_duration)
+    duplicate_penalty = 0.25 if already_used else 0.0
+    return max(0.0, min(1.0, (0.45 * query_score) + (0.55 * quality_score) - duplicate_penalty))
 
 
 async def _search_pexels_videos(query: str, per_page: int = 5) -> List[dict]:
@@ -201,6 +211,7 @@ async def _search_pexels_videos(query: str, per_page: int = 5) -> List[dict]:
                         "width": medium.get("width", 0),
                         "height": medium.get("height", 0),
                         "duration": v.get("duration", 0),
+                        "video_id": v.get("id"),
                     })
             _pexels_cache[cache_key] = results
             return results
@@ -209,7 +220,7 @@ async def _search_pexels_videos(query: str, per_page: int = 5) -> List[dict]:
 
 
 async def run_casting(job: EpisodeJob, broadcast_log) -> EpisodeJob:
-    """Match each scene to a stock video clip using Nova Multimodal Embeddings + Pexels."""
+    """Match each scene to a stock video clip using query expansion and quality ranking."""
     job.status = EpisodeStatus.CASTING
     await broadcast_log("CASTING", "info", "Starting scene-to-video matching...")
 
@@ -219,67 +230,48 @@ async def run_casting(job: EpisodeJob, broadcast_log) -> EpisodeJob:
         return job
 
     scene_assets: List[SceneAsset] = []
-    use_embeddings = USE_NOVA_EMBEDDINGS and bool(PEXELS_API_KEY)
-    if not use_embeddings and PEXELS_API_KEY:
-        await broadcast_log("CASTING", "info", "Nova embeddings disabled; using keyword matching mode")
+    used_video_urls: set[str] = set()
+    if PEXELS_API_KEY:
+        await broadcast_log("CASTING", "info", "Using smart keyword + quality ranking mode")
 
     for scene in job.blueprint.scenes:
         try:
             query = scene.visual_description
             search_queries = _build_search_queries(query, job.source_headline, scene.scene_number)
 
-            # Try embedding-based semantic search
-            if use_embeddings and PEXELS_API_KEY:
-                try:
-                    scene_embedding = await _get_text_embedding(query)
-                    await broadcast_log(
-                        "CASTING", "info",
-                        f"Scene {scene.scene_number}: Nova embedding generated ({len(scene_embedding)}d vector)"
-                    )
-
-                    # Search Pexels and embed search terms for comparison
-                    videos = await _search_pexels_videos(query)
-
-                    if videos:
-                        # Embed the query used for Pexels search and compute similarity
-                        # against the scene description embedding as a quality metric
-                        search_embedding = await _get_text_embedding(query[:50])
-                        sim_score = _cosine_similarity(scene_embedding, search_embedding)
-
-                        best_video = videos[0]
-                        scene_assets.append(SceneAsset(
-                            scene_number=scene.scene_number,
-                            video_url=best_video["url"],
-                            similarity_score=round(sim_score, 4),
-                        ))
-                        await broadcast_log(
-                            "CASTING", "success",
-                            f"Scene {scene.scene_number}: matched video (embed score: {sim_score:.2f})"
-                        )
-                        continue
-                except Exception as e:
-                    await broadcast_log("CASTING", "warn", f"Nova Embeddings failed: {e}")
-                    use_embeddings = False
-
-            # Fallback: direct Pexels keyword search (no embeddings)
+            # Primary: Pexels query expansion + clip quality ranking
             if PEXELS_API_KEY:
-                for candidate_query in search_queries:
-                    videos = await _search_pexels_videos(candidate_query)
-                    if videos:
-                        scene_assets.append(SceneAsset(
-                            scene_number=scene.scene_number,
-                            video_url=videos[0]["url"],
-                            similarity_score=0.70,
-                        ))
-                        await broadcast_log(
-                            "CASTING", "info",
-                            f"Scene {scene.scene_number}: keyword match using '{candidate_query}' (score: 0.70)"
-                        )
-                        break
-                else:
-                    videos = []
+                best_video: dict | None = None
+                best_score = -1.0
+                best_query = ""
 
-                if videos:
+                for candidate_query in search_queries:
+                    videos = await _search_pexels_videos(candidate_query, per_page=8)
+                    for video in videos:
+                        score = _ranked_video_score(
+                            scene_query=query,
+                            candidate_query=candidate_query,
+                            headline=job.source_headline,
+                            target_duration=scene.duration_seconds,
+                            video=video,
+                            already_used=video.get("url", "") in used_video_urls,
+                        )
+                        if score > best_score:
+                            best_score = score
+                            best_video = video
+                            best_query = candidate_query
+
+                if best_video and best_video.get("url"):
+                    scene_assets.append(SceneAsset(
+                        scene_number=scene.scene_number,
+                        video_url=best_video["url"],
+                        similarity_score=round(max(best_score, 0.0), 4),
+                    ))
+                    used_video_urls.add(best_video["url"])
+                    await broadcast_log(
+                        "CASTING", "success",
+                        f"Scene {scene.scene_number}: matched via '{best_query}' (score: {best_score:.2f})"
+                    )
                     continue
 
             # Final fallback: use placeholder
@@ -301,5 +293,5 @@ async def run_casting(job: EpisodeJob, broadcast_log) -> EpisodeJob:
 
     job.scene_assets = scene_assets
     avg_score = sum(a.similarity_score for a in scene_assets) / max(len(scene_assets), 1)
-    await broadcast_log("CASTING", "success", f"Casting complete. Avg embed score: {avg_score:.2f}")
+    await broadcast_log("CASTING", "success", f"Casting complete. Avg match score: {avg_score:.2f}")
     return job

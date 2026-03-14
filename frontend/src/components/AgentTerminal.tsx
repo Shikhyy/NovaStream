@@ -15,6 +15,14 @@ const AGENT_COLORS: Record<string, string> = {
   PIPELINE: "bg-[#4A6278]",
 };
 
+const AGENT_BORDER_COLORS: Record<string, string> = {
+  SHOWRUNNER: "#0EA5E9",
+  CASTING:    "#F59E0B",
+  VOICE:      "#10B981",
+  EDITOR:     "#A78BFA",
+  PIPELINE:   "#4A6278",
+};
+
 const LEVEL_COLORS: Record<string, string> = {
   info: "text-[#C8D6E5]",
   success: "text-[#10B981]",
@@ -41,12 +49,15 @@ export default function AgentTerminal({ logs }: Props) {
   return (
     <div className="flex flex-col h-full bg-[#080B0F]">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[#1E2D3D]">
-        <span className="font-barlow font-black text-[10px] tracking-[3px] text-[#4A6278] uppercase">
-          Agent Terminal
-        </span>
-        <span className="font-mono text-[10px] text-[#4A6278]">
-          {logs.length} lines
+      <div className="flex items-center justify-between px-3 py-2 border-b border-[#1E2D3D] bg-[#060A0F]">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_5px_rgba(16,185,129,0.8)] animate-pulse" />
+          <span className="font-barlow font-black text-[10px] tracking-[3px] text-[#4A6278] uppercase">
+            Agent Terminal
+          </span>
+        </div>
+        <span className="font-mono text-[10px] text-[#2A4060] bg-[#0D1117] px-1.5 py-0.5 rounded">
+          {logs.length}
         </span>
       </div>
 
@@ -66,7 +77,8 @@ export default function AgentTerminal({ logs }: Props) {
         {logs.map((log, i) => (
           <div
             key={i}
-            className="flex items-start gap-2 font-mono text-[11px] leading-[1.7] animate-slide-in"
+            className="flex items-start gap-2 font-mono text-[11px] leading-[1.7] animate-slide-in pl-2 border-l-2 hover:bg-[#0D1117]/60 rounded-r transition-colors"
+            style={{ borderLeftColor: AGENT_BORDER_COLORS[log.agent_id] ?? "#2A3F4F" }}
           >
             {/* Timestamp */}
             <span className="text-[#4A6278] shrink-0 w-[52px]">

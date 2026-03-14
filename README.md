@@ -27,7 +27,7 @@ graph LR
 | Agent | Role | AI Model / Tech |
 |-------|------|-----------------|
 | **Showrunner** | Generates production blueprint JSON from headline | Amazon Nova 2 Lite |
-| **Casting Director** | Matches scenes to stock video via semantic matching | Nova Multimodal Embeddings |
+| **Casting Director** | Matches scenes to stock video via smart query expansion and quality ranking | Pexels API + custom ranking |
 | **Voice Actor** | Synthesizes voiceover narration per scene | Amazon Nova 2 Sonic |
 | **Editor** | Stitches video + audio into final episode via FFmpeg | FFmpeg |
 
@@ -41,15 +41,13 @@ Here is how AWS is utilized:
 
 1. **Amazon Nova 2 Lite (`amazon.nova-2-lite-v1:0`)**:
    - Used by the **Showrunner Agent** to dynamically act as a TV producer. It takes a raw news headline and generates a structured, multi-scene production blueprint (JSON format) containing scripts, visual cues, and narrations.
-2. **Amazon Nova Multimodal Embeddings (`amazon.nova-2-multimodal-embeddings-v1:0`)**:
-   - Used by the **Casting Director Agent** to semantically map the Showrunner's visual descriptions to real-world stock footage from Pexels, ensuring highly relevant and context-aware B-roll video.
-3. **Amazon Nova 2 Sonic (`amazon.nova-2-sonic-v1:0`)**:
+2. **Amazon Nova 2 Sonic (`amazon.nova-2-sonic-v1:0`)**:
    - Used by the **Voice Actor Agent** for hyper-realistic Text-to-Speech (TTS) synthesis. It breathes life into the Showrunner's script, voicing the news broadcast scene-by-scene.
-4. **AWS Identity and Access Management (IAM)**:
+3. **AWS Identity and Access Management (IAM)**:
    - For secure, scalable access, NovaStream connects to Bedrock using either short-term STS credentials or long-term IAM API credentials via `boto3`.
 
 > **💡 Cost Savings & Local Fallbacks:**
-> To ensure AWS Bedrock credits remain predictable during development, NovaStream features built-in **Low-Cost Modes**. You can cap the number of generated scenes per episode (`NOVA_MAX_SCENES_PER_EPISODE`) or disable heavy embedding calls (`USE_NOVA_EMBEDDINGS=false`).
+> To ensure AWS Bedrock credits remain predictable during development, NovaStream features built-in **Low-Cost Modes**. You can cap the number of generated scenes per episode (`NOVA_MAX_SCENES_PER_EPISODE`) and rely on lightweight stock-footage matching heuristics.
 
 ---
 
@@ -112,3 +110,4 @@ Open [http://localhost:3000](http://localhost:3000) to view the live infinite br
 Built for the **Amazon Nova AI Hackathon — March 2026**.
 - **Agentic AI**: Multi-agent orchestration with autonomous state transitions.
 - **Multimodal Understanding**: Cross-model pipeline using Nova Lite text generation, Sonic TTS, and Embeddings for full A/V production.
+- **Multimodal Understanding**: Cross-model pipeline using Nova Lite text generation, Sonic TTS, and intelligent stock-footage matching for full A/V production.

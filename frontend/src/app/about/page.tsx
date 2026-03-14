@@ -37,7 +37,7 @@ export default function AboutPage() {
             </div>
             <div className="border border-[#1E2D3D] bg-[#0D1117] rounded-lg p-4">
               <p className="font-barlow font-black text-xs tracking-[2px] text-[#4A6278] uppercase mb-2">AI Stack</p>
-              <p className="font-inter text-sm text-[#7A9AB5]">Amazon Nova Lite, Nova Sonic, optional Embeddings, with fallback safety modes.</p>
+              <p className="font-inter text-sm text-[#7A9AB5]">Amazon Nova Lite, Nova Sonic, and smart Pexels scene matching with fallback safety modes.</p>
             </div>
             <div className="border border-[#1E2D3D] bg-[#0D1117] rounded-lg p-4">
               <p className="font-barlow font-black text-xs tracking-[2px] text-[#4A6278] uppercase mb-2">Storage</p>
