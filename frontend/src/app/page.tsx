@@ -10,7 +10,7 @@ import NewsTicker from "@/components/NewsTicker";
 import PipelineView from "@/components/PipelineView";
 
 export default function Home() {
-  const { logs, queue, nowPlaying, stats, connected, reconnecting, reconnectInSec } = useWebSocket();
+  const { logs, queue, nowPlaying, stats, tickerHeadlines, connected, reconnecting, reconnectInSec } = useWebSocket();
   const [sidebarTab, setSidebarTab] = useState<"terminal" | "pipeline">("terminal");
   const [elapsed, setElapsed] = useState(0);
 
@@ -122,7 +122,7 @@ export default function Home() {
       </div>
 
       {/* Bottom News Ticker */}
-      <NewsTicker headline={nowPlaying?.headline || ""} />
+      <NewsTicker headlines={tickerHeadlines} />
     </div>
   );
 }

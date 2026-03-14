@@ -48,6 +48,96 @@ Rules:
 """
 
 
+def _headline_keywords(headline: str) -> list[str]:
+    stopwords = {
+        "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "with", "from", "at", "by",
+        "is", "are", "was", "were", "be", "been", "as", "that", "this", "it", "its", "after",
+        "amid", "over", "under", "into", "about", "new", "says", "say", "will", "could", "their",
+    }
+    tokens = re.findall(r"[A-Za-z0-9']+", headline.lower())
+    deduped: list[str] = []
+    for token in tokens:
+        if len(token) <= 3 or token in stopwords or token in deduped:
+            continue
+        deduped.append(token)
+    return deduped
+
+
+def _infer_topic(headline: str) -> str:
+    text = headline.lower()
+    topic_rules = {
+        "finance": {"stocks", "stock", "dow", "nasdaq", "market", "oil", "earnings", "investor", "economy", "trade"},
+        "space": {"moon", "mars", "rocket", "nasa", "space", "astronaut", "launch", "mission", "satellite"},
+        "politics": {"president", "administration", "congress", "senate", "government", "minister", "election", "vote", "policy"},
+        "crime": {"attack", "killed", "arrest", "shooting", "suspect", "police", "security", "crime", "court"},
+        "health": {"health", "medical", "hospital", "doctor", "disease", "therapy", "virus", "drug"},
+        "climate": {"climate", "storm", "wildfire", "flood", "weather", "heat", "earthquake", "hurricane"},
+        "technology": {"ai", "artificial", "chip", "tech", "software", "robot", "quantum", "battery"},
+    }
+    for topic, words in topic_rules.items():
+        if any(word in text for word in words):
+            return topic
+    return "general"
+
+
+def _fallback_visuals(topic: str, keywords: list[str]) -> list[str]:
+    kw1 = keywords[0] if len(keywords) > 0 else "breaking"
+    kw2 = keywords[1] if len(keywords) > 1 else "news"
+    kw3 = keywords[2] if len(keywords) > 2 else "global"
+
+    topic_visuals = {
+        "finance": [
+            f"stock market trading screens showing {kw1} and {kw2} price movement",
+            f"oil refinery, commodities charts, and energy market visuals for {kw1}",
+            f"business district offices and traders reacting to {kw2}",
+            f"global financial map, charts, and economic data tied to {kw3}",
+        ],
+        "space": [
+            f"rocket launch pad and mission control screens about {kw1}",
+            f"astronaut training, moon mission hardware, and {kw2} visuals",
+            f"space agency press briefing and engineers discussing {kw3}",
+            f"planetary map, spacecraft animation, and countdown graphics",
+        ],
+        "politics": [
+            f"government building exterior and podium remarks about {kw1}",
+            f"officials, flags, and media scrum focused on {kw2}",
+            f"public reaction, protest crowd, and interview clips about {kw3}",
+            f"world map, diplomacy visuals, and policy timeline graphics",
+        ],
+        "crime": [
+            f"police vehicles, crime scene tape, and investigators linked to {kw1}",
+            f"security footage style city street visuals related to {kw2}",
+            f"law enforcement press conference and courthouse exterior for {kw3}",
+            f"community gathering, candles, and ongoing investigation graphics",
+        ],
+        "health": [
+            f"hospital corridor, medical staff, and patient care tied to {kw1}",
+            f"laboratory research, microscope, and treatment visuals for {kw2}",
+            f"doctor press briefing and healthcare workers discussing {kw3}",
+            f"medical charts, public health map, and recovery timeline graphics",
+        ],
+        "climate": [
+            f"extreme weather footage, storm clouds, and environmental impact of {kw1}",
+            f"emergency crews, damaged streets, and disaster response for {kw2}",
+            f"community cleanup, aerial aftermath, and rescue visuals about {kw3}",
+            f"global climate map, forecast graphics, and data overlays",
+        ],
+        "technology": [
+            f"technology lab, screens, and product visuals related to {kw1}",
+            f"engineers, robotics, and close-up hardware shots tied to {kw2}",
+            f"conference stage, keynote audience, and innovation footage for {kw3}",
+            f"futuristic data visualization and digital network animation",
+        ],
+        "general": [
+            f"headline graphics and newsroom visuals focused on {kw1} and {kw2}",
+            f"public reaction and on-the-ground footage related to {kw1}",
+            f"official statements and press conference visuals about {kw2} and {kw3}",
+            f"global map animation and data timeline tracking the story",
+        ],
+    }
+    return topic_visuals[topic]
+
+
 async def run_showrunner(job: EpisodeJob, broadcast_log) -> EpisodeJob:
     """Generate a production blueprint from the headline using Nova 2 Lite via Converse API."""
     job.status = EpisodeStatus.SCRIPTING
@@ -113,25 +203,8 @@ async def run_showrunner(job: EpisodeJob, broadcast_log) -> EpisodeJob:
 
 def _fallback_blueprint(headline: str) -> Blueprint:
     """Generate a simple fallback blueprint when Nova 2 Lite is unavailable."""
-    stopwords = {
-        "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "with", "from", "at", "by",
-        "is", "are", "was", "were", "be", "been", "as", "that", "this", "it", "its", "after",
-        "amid", "over", "under", "into", "about", "new", "says", "say",
-    }
-
-    tokens = re.findall(r"[A-Za-z0-9']+", headline.lower())
-    keywords = [t for t in tokens if len(t) > 3 and t not in stopwords]
-
-    # Keep stable ordering while removing duplicates
-    deduped = []
-    for kw in keywords:
-        if kw not in deduped:
-            deduped.append(kw)
-
-    kw1 = deduped[0] if len(deduped) > 0 else "breaking"
-    kw2 = deduped[1] if len(deduped) > 1 else "news"
-    kw3 = deduped[2] if len(deduped) > 2 else "global"
-    kw4 = deduped[3] if len(deduped) > 3 else "update"
+    keywords = _headline_keywords(headline)
+    visuals = _fallback_visuals(_infer_topic(headline), keywords)
 
     return Blueprint(
         title=headline[:80],
@@ -139,25 +212,25 @@ def _fallback_blueprint(headline: str) -> Blueprint:
         scenes=[
             {
                 "scene_number": 1,
-                "visual_description": f"TV newsroom, anchor desk, screens showing {kw1} and {kw2} headline graphics",
+                "visual_description": visuals[0],
                 "voiceover_script": f"Breaking news today. {headline}. This story has captured global attention.",
                 "duration_seconds": 15,
             },
             {
                 "scene_number": 2,
-                "visual_description": f"Street interviews and crowd reactions related to {kw1} and {kw3}",
+                "visual_description": visuals[1],
                 "voiceover_script": "Experts are weighing in from around the world, offering their analysis on what this means for the future.",
                 "duration_seconds": 15,
             },
             {
                 "scene_number": 3,
-                "visual_description": f"Press conference podium, officials discussing {kw2}, {kw3}, and {kw4}",
+                "visual_description": visuals[2],
                 "voiceover_script": "Public reaction has been swift and divided, with many taking to social media to share their thoughts.",
                 "duration_seconds": 15,
             },
             {
                 "scene_number": 4,
-                "visual_description": f"Global map animation, data overlays, and timelines tracking the {kw1} story",
+                "visual_description": visuals[3],
                 "voiceover_script": "As this story continues to develop, one thing is certain. The world is watching closely.",
                 "duration_seconds": 15,
             },

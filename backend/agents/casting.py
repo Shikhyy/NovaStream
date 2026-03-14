@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import logging
+import re
 from typing import List
 
 import boto3
@@ -29,6 +30,112 @@ USE_NOVA_EMBEDDINGS = os.getenv("USE_NOVA_EMBEDDINGS", "false").lower() in {
 # Cache for Pexels search results and their embeddings
 _pexels_cache: dict[str, List[dict]] = {}
 _embedding_cache: dict[str, List[float]] = {}
+
+
+def _extract_keywords(text: str) -> list[str]:
+    stopwords = {
+        "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "with", "from", "at", "by",
+        "is", "are", "was", "were", "be", "been", "as", "that", "this", "it", "its", "after",
+        "amid", "over", "under", "into", "about", "new", "says", "say", "will", "could",
+    }
+    tokens = re.findall(r"[A-Za-z0-9']+", text.lower())
+    keywords: list[str] = []
+    for token in tokens:
+        if len(token) <= 3 or token in stopwords or token in keywords:
+            continue
+        keywords.append(token)
+    return keywords
+
+
+def _infer_topic(text: str) -> str:
+    text = text.lower()
+    topic_rules = {
+        "finance": {"stocks", "stock", "dow", "nasdaq", "market", "oil", "earnings", "investor", "economy", "trade"},
+        "space": {"moon", "mars", "rocket", "nasa", "space", "astronaut", "launch", "mission", "satellite"},
+        "politics": {"president", "administration", "congress", "senate", "government", "minister", "election", "vote", "policy"},
+        "crime": {"attack", "killed", "arrest", "shooting", "suspect", "police", "security", "crime", "court"},
+        "health": {"health", "medical", "hospital", "doctor", "disease", "therapy", "virus", "drug"},
+        "climate": {"climate", "storm", "wildfire", "flood", "weather", "heat", "earthquake", "hurricane"},
+        "technology": {"ai", "artificial", "chip", "tech", "software", "robot", "quantum", "battery"},
+    }
+    for topic, words in topic_rules.items():
+        if any(word in text for word in words):
+            return topic
+    return "general"
+
+
+def _build_search_queries(scene_query: str, headline: str, scene_number: int) -> list[str]:
+    keywords = _extract_keywords(headline)
+    topic = _infer_topic(headline)
+    kw1 = keywords[0] if len(keywords) > 0 else "news"
+    kw2 = keywords[1] if len(keywords) > 1 else "update"
+    kw3 = keywords[2] if len(keywords) > 2 else "world"
+
+    topic_queries = {
+        "finance": [
+            f"{kw1} {kw2} stock market",
+            "stock market trading screen",
+            "business district skyline",
+            "oil refinery energy market",
+        ],
+        "space": [
+            f"{kw1} {kw2} rocket launch",
+            "mission control nasa",
+            "astronaut training space",
+            "moon mission spacecraft",
+        ],
+        "politics": [
+            f"{kw1} {kw2} government",
+            "government building press conference",
+            "politician podium flags",
+            "public protest crowd",
+        ],
+        "crime": [
+            f"{kw1} {kw2} police",
+            "police crime scene tape",
+            "security camera city street",
+            "courthouse press conference",
+        ],
+        "health": [
+            f"{kw1} {kw2} hospital",
+            "hospital doctor patient",
+            "medical laboratory research",
+            "health press briefing",
+        ],
+        "climate": [
+            f"{kw1} {kw2} weather",
+            "storm clouds disaster response",
+            "flood wildfire emergency",
+            "climate data map",
+        ],
+        "technology": [
+            f"{kw1} {kw2} technology",
+            "technology lab computers",
+            "robotics engineers hardware",
+            "conference keynote audience",
+        ],
+        "general": [
+            f"{kw1} {kw2} {kw3}",
+            f"{kw1} news footage",
+            f"{kw2} public reaction",
+            "press conference world news",
+        ],
+    }
+
+    scene_specific = {
+        1: [scene_query, f"{kw1} {kw2} breaking news"],
+        2: [scene_query, f"{kw1} public reaction"],
+        3: [scene_query, f"{kw2} official statement"],
+        4: [scene_query, f"{kw1} global map data"],
+    }
+
+    candidates = scene_specific.get(scene_number, [scene_query]) + topic_queries[topic]
+    queries: list[str] = []
+    for candidate in candidates:
+        cleaned = candidate.strip()
+        if cleaned and cleaned not in queries:
+            queries.append(cleaned)
+    return queries
 
 
 def _cosine_similarity(a: List[float], b: List[float]) -> float:
@@ -119,6 +226,7 @@ async def run_casting(job: EpisodeJob, broadcast_log) -> EpisodeJob:
     for scene in job.blueprint.scenes:
         try:
             query = scene.visual_description
+            search_queries = _build_search_queries(query, job.source_headline, scene.scene_number)
 
             # Try embedding-based semantic search
             if use_embeddings and PEXELS_API_KEY:
@@ -155,17 +263,23 @@ async def run_casting(job: EpisodeJob, broadcast_log) -> EpisodeJob:
 
             # Fallback: direct Pexels keyword search (no embeddings)
             if PEXELS_API_KEY:
-                videos = await _search_pexels_videos(query)
+                for candidate_query in search_queries:
+                    videos = await _search_pexels_videos(candidate_query)
+                    if videos:
+                        scene_assets.append(SceneAsset(
+                            scene_number=scene.scene_number,
+                            video_url=videos[0]["url"],
+                            similarity_score=0.70,
+                        ))
+                        await broadcast_log(
+                            "CASTING", "info",
+                            f"Scene {scene.scene_number}: keyword match using '{candidate_query}' (score: 0.70)"
+                        )
+                        break
+                else:
+                    videos = []
+
                 if videos:
-                    scene_assets.append(SceneAsset(
-                        scene_number=scene.scene_number,
-                        video_url=videos[0]["url"],
-                        similarity_score=0.70,
-                    ))
-                    await broadcast_log(
-                        "CASTING", "info",
-                        f"Scene {scene.scene_number}: keyword match (no embedding, score: 0.70)"
-                    )
                     continue
 
             # Final fallback: use placeholder

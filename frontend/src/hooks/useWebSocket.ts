@@ -48,11 +48,48 @@ export interface SystemStats {
   embed_score_avg: number;
 }
 
+export interface TickerItem {
+  text: string;
+  category: string;
+  addedAt: number;
+}
+
+const CATEGORY_PATTERNS: Array<{ pattern: RegExp; category: string }> = [
+  { pattern: /stock|nasdaq|dow|market|oil|earnings|economy|trade/i, category: "finance" },
+  { pattern: /moon|mars|rocket|nasa|space|astronaut|launch|satellite/i, category: "space" },
+  { pattern: /president|congress|senate|government|minister|election|vote|policy/i, category: "politics" },
+  { pattern: /attack|killed|arrest|shooting|police|crime|court/i, category: "crime" },
+  { pattern: /health|hospital|doctor|disease|virus|drug|medical/i, category: "health" },
+  { pattern: /climate|storm|wildfire|flood|earthquake|hurricane|weather/i, category: "climate" },
+  { pattern: /\bai\b|tech|chip|software|robot|quantum/i, category: "tech" },
+];
+
+function inferCategory(text: string): string {
+  for (const { pattern, category } of CATEGORY_PATTERNS) {
+    if (pattern.test(text)) return category;
+  }
+  return "news";
+}
+
+function mergeTickerItems(
+  existing: TickerItem[],
+  incoming: Array<string | undefined>,
+  limit = 9
+): TickerItem[] {
+  return incoming.reduce((items, value) => {
+    const text = value?.trim();
+    if (!text) return items;
+    const withoutDupe = items.filter((item) => item.text !== text);
+    return [...withoutDupe, { text, category: inferCategory(text), addedAt: Date.now() }].slice(-limit);
+  }, existing);
+}
+
 interface WSState {
   logs: LogLine[];
   queue: QueueItem[];
   nowPlaying: NowPlaying | null;
   stats: SystemStats | null;
+  tickerHeadlines: TickerItem[];
   connected: boolean;
   reconnecting: boolean;
   reconnectInSec: number;
@@ -80,6 +117,7 @@ export function useWebSocket() {
     queue: [],
     nowPlaying: null,
     stats: null,
+    tickerHeadlines: [],
     connected: false,
     reconnecting: false,
     reconnectInSec: 0,
@@ -126,9 +164,25 @@ export function useWebSocket() {
                   logs: [...prev.logs.slice(-200), msg as LogLine],
                 };
               case "QUEUE_UPDATE":
-                return { ...prev, queue: msg.queue || [] };
+                return {
+                  ...prev,
+                  queue: msg.queue || [],
+                  tickerHeadlines: mergeTickerItems(
+                    prev.tickerHeadlines,
+                    [...(msg.queue || [])]
+                      .sort(
+                        (a: QueueItem, b: QueueItem) =>
+                          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                      )
+                      .map((item: QueueItem) => item.source_headline)
+                  ),
+                };
               case "NOW_PLAYING":
-                return { ...prev, nowPlaying: msg as NowPlaying };
+                return {
+                  ...prev,
+                  nowPlaying: msg as NowPlaying,
+                  tickerHeadlines: mergeTickerItems(prev.tickerHeadlines, [(msg as NowPlaying).headline]),
+                };
               case "SYSTEM_STATS":
                 return { ...prev, stats: msg as SystemStats };
               default:
