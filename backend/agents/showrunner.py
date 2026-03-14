@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import logging
+import re
 
 import boto3
 from dotenv import load_dotenv
@@ -112,31 +113,51 @@ async def run_showrunner(job: EpisodeJob, broadcast_log) -> EpisodeJob:
 
 def _fallback_blueprint(headline: str) -> Blueprint:
     """Generate a simple fallback blueprint when Nova 2 Lite is unavailable."""
+    stopwords = {
+        "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "with", "from", "at", "by",
+        "is", "are", "was", "were", "be", "been", "as", "that", "this", "it", "its", "after",
+        "amid", "over", "under", "into", "about", "new", "says", "say",
+    }
+
+    tokens = re.findall(r"[A-Za-z0-9']+", headline.lower())
+    keywords = [t for t in tokens if len(t) > 3 and t not in stopwords]
+
+    # Keep stable ordering while removing duplicates
+    deduped = []
+    for kw in keywords:
+        if kw not in deduped:
+            deduped.append(kw)
+
+    kw1 = deduped[0] if len(deduped) > 0 else "breaking"
+    kw2 = deduped[1] if len(deduped) > 1 else "news"
+    kw3 = deduped[2] if len(deduped) > 2 else "global"
+    kw4 = deduped[3] if len(deduped) > 3 else "update"
+
     return Blueprint(
         title=headline[:80],
         tone="documentary",
         scenes=[
             {
                 "scene_number": 1,
-                "visual_description": "News broadcast studio with anchor desk and screens",
+                "visual_description": f"TV newsroom, anchor desk, screens showing {kw1} and {kw2} headline graphics",
                 "voiceover_script": f"Breaking news today. {headline}. This story has captured global attention.",
                 "duration_seconds": 15,
             },
             {
                 "scene_number": 2,
-                "visual_description": "City skyline timelapse with dramatic clouds",
+                "visual_description": f"Street interviews and crowd reactions related to {kw1} and {kw3}",
                 "voiceover_script": "Experts are weighing in from around the world, offering their analysis on what this means for the future.",
                 "duration_seconds": 15,
             },
             {
                 "scene_number": 3,
-                "visual_description": "People walking in busy urban street",
+                "visual_description": f"Press conference podium, officials discussing {kw2}, {kw3}, and {kw4}",
                 "voiceover_script": "Public reaction has been swift and divided, with many taking to social media to share their thoughts.",
                 "duration_seconds": 15,
             },
             {
                 "scene_number": 4,
-                "visual_description": "Globe spinning with network connections overlay",
+                "visual_description": f"Global map animation, data overlays, and timelines tracking the {kw1} story",
                 "voiceover_script": "As this story continues to develop, one thing is certain. The world is watching closely.",
                 "duration_seconds": 15,
             },
