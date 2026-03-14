@@ -10,7 +10,7 @@ import NewsTicker from "@/components/NewsTicker";
 import PipelineView from "@/components/PipelineView";
 
 export default function Home() {
-  const { logs, queue, nowPlaying, stats, connected } = useWebSocket();
+  const { logs, queue, nowPlaying, stats, connected, reconnecting, reconnectInSec } = useWebSocket();
   const [sidebarTab, setSidebarTab] = useState<"terminal" | "pipeline">("terminal");
   const [elapsed, setElapsed] = useState(0);
 
@@ -45,6 +45,8 @@ export default function Home() {
           <p className="text-[#2A4060] text-xs font-mono">
             {elapsed < 10
               ? "Connecting to backend..."
+              : reconnecting
+              ? `Reconnecting in ${reconnectInSec}s — ${elapsed}s elapsed`
               : elapsed < 30
               ? `Still starting up — ${elapsed}s elapsed`
               : `Almost there — ${elapsed}s elapsed`}

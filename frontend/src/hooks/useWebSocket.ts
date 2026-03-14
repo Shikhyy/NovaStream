@@ -54,6 +54,8 @@ interface WSState {
   nowPlaying: NowPlaying | null;
   stats: SystemStats | null;
   connected: boolean;
+  reconnecting: boolean;
+  reconnectInSec: number;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -79,11 +81,25 @@ export function useWebSocket() {
     nowPlaying: null,
     stats: null,
     connected: false,
+    reconnecting: false,
+    reconnectInSec: 0,
   });
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
+  const reconnectCountdown = useRef<NodeJS.Timeout | null>(null);
   const reconnectDelay = useRef(1000);
+
+  const clearReconnectTimers = useCallback(() => {
+    if (reconnectTimeout.current) {
+      clearTimeout(reconnectTimeout.current);
+      reconnectTimeout.current = null;
+    }
+    if (reconnectCountdown.current) {
+      clearInterval(reconnectCountdown.current);
+      reconnectCountdown.current = null;
+    }
+  }, []);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -93,7 +109,8 @@ export function useWebSocket() {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        setState((s) => ({ ...s, connected: true }));
+        clearReconnectTimers();
+        setState((s) => ({ ...s, connected: true, reconnecting: false, reconnectInSec: 0 }));
         reconnectDelay.current = 1000;
       };
 
@@ -124,12 +141,31 @@ export function useWebSocket() {
       };
 
       ws.onclose = () => {
-        setState((s) => ({ ...s, connected: false }));
+        const delayMs = reconnectDelay.current;
+        const delaySec = Math.max(1, Math.ceil(delayMs / 1000));
+
+        setState((s) => ({
+          ...s,
+          connected: false,
+          reconnecting: true,
+          reconnectInSec: delaySec,
+        }));
+
+        if (reconnectCountdown.current) {
+          clearInterval(reconnectCountdown.current);
+        }
+        reconnectCountdown.current = setInterval(() => {
+          setState((prev) => ({
+            ...prev,
+            reconnectInSec: Math.max(0, prev.reconnectInSec - 1),
+          }));
+        }, 1000);
+
         // Exponential backoff reconnect
         reconnectTimeout.current = setTimeout(() => {
           reconnectDelay.current = Math.min(reconnectDelay.current * 2, 30000);
           connect();
-        }, reconnectDelay.current);
+        }, delayMs);
       };
 
       ws.onerror = () => {
@@ -137,17 +173,18 @@ export function useWebSocket() {
       };
     } catch {
       // retry
+      setState((s) => ({ ...s, connected: false, reconnecting: true }));
       reconnectTimeout.current = setTimeout(connect, reconnectDelay.current);
     }
-  }, []);
+  }, [clearReconnectTimers]);
 
   useEffect(() => {
     connect();
     return () => {
-      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+      clearReconnectTimers();
       wsRef.current?.close();
     };
-  }, [connect]);
+  }, [connect, clearReconnectTimers]);
 
   return state;
 }

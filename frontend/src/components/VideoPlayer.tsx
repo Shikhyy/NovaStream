@@ -10,10 +10,15 @@ interface Props {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+type PlaybackState = "idle" | "loading" | "playing" | "buffering" | "stalled" | "error";
+
 export default function VideoPlayer({ nowPlaying }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [playFailed, setPlayFailed] = useState(false);
+  const [playbackState, setPlaybackState] = useState<PlaybackState>("idle");
+  const [displaySrc, setDisplaySrc] = useState("");
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const videoSrc = nowPlaying?.video_url
     ? nowPlaying.video_url.startsWith("http")
@@ -29,16 +34,58 @@ export default function VideoPlayer({ nowPlaying }: Props) {
   }, []);
 
   useEffect(() => {
+    if (!videoSrc) {
+      setDisplaySrc("");
+      setPlaybackState("idle");
+      setPlayFailed(false);
+      return;
+    }
+
+    setPlaybackState("loading");
+    const preloadVideo = document.createElement("video");
+    let cancelled = false;
+
+    preloadVideo.preload = "auto";
+    preloadVideo.src = videoSrc;
+    preloadVideo.muted = true;
+    preloadVideo.playsInline = true;
+
+    preloadVideo.oncanplay = () => {
+      if (cancelled) return;
+      setIsTransitioning(true);
+      setDisplaySrc(videoSrc);
+      window.setTimeout(() => {
+        if (!cancelled) setIsTransitioning(false);
+      }, 220);
+    };
+
+    preloadVideo.onerror = () => {
+      if (cancelled) return;
+      setPlaybackState("error");
+      setPlayFailed(true);
+      setIsTransitioning(false);
+    };
+
+    preloadVideo.load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [videoSrc]);
+
+  useEffect(() => {
     const video = videoRef.current;
-    if (!video || !videoSrc) return;
-    video.src = videoSrc;
+    if (!video || !displaySrc) return;
+    video.src = displaySrc;
     video.muted = muted;
     video.play().then(() => {
       setPlayFailed(false);
+      setPlaybackState("playing");
     }).catch(() => {
       setPlayFailed(true);
+      setPlaybackState("error");
     });
-  }, [videoSrc]);
+  }, [displaySrc, muted]);
 
   const handleUnmute = () => {
     setMuted(false);
@@ -49,18 +96,37 @@ export default function VideoPlayer({ nowPlaying }: Props) {
 
   const handleClickToPlay = () => {
     setPlayFailed(false);
-    videoRef.current?.play().catch(() => setPlayFailed(true));
+    videoRef.current?.play().then(() => {
+      setPlaybackState("playing");
+    }).catch(() => {
+      setPlayFailed(true);
+      setPlaybackState("error");
+    });
   };
+
+  const statusLabel = {
+    loading: "Loading feed",
+    buffering: "Buffering",
+    stalled: "Network stalled",
+    error: "Playback error",
+  } as const;
+
+  const showStatusOverlay = videoSrc && !playFailed && ["loading", "buffering", "stalled"].includes(playbackState);
 
   return (
     <div className="relative w-full bg-black rounded-lg overflow-hidden" style={{ aspectRatio: "16/9" }}>
       {/* Video Element */}
       <video
         ref={videoRef}
-        className="w-full h-full object-cover"
+        className={`w-full h-full object-cover transition-opacity duration-300 ${isTransitioning ? "opacity-80" : "opacity-100"}`}
         autoPlay
         muted
         playsInline
+        onLoadedData={() => setPlaybackState("loading")}
+        onPlaying={() => setPlaybackState("playing")}
+        onWaiting={() => setPlaybackState("buffering")}
+        onStalled={() => setPlaybackState("stalled")}
+        onError={() => setPlaybackState("error")}
         onEnded={() => {
           // Auto-advance handled by backend NOW_PLAYING messages
         }}
@@ -73,6 +139,18 @@ export default function VideoPlayer({ nowPlaying }: Props) {
           background: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px)",
         }}
       />
+
+      {/* Playback status overlay */}
+      {showStatusOverlay && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 pointer-events-none">
+          <div className="bg-[#080B0F]/85 border border-[#1E2D3D] px-4 py-2 rounded flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-[#0EA5E9] animate-pulse" />
+            <span className="font-mono text-[11px] tracking-[1px] text-[#8FAFC8] uppercase">
+              {statusLabel[playbackState as keyof typeof statusLabel] || "Loading feed"}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Click-to-play overlay (shown when autoplay was blocked) */}
       {playFailed && videoSrc && (
