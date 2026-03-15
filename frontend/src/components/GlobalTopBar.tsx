@@ -74,3 +74,33 @@ export default function GlobalTopBar({ stats, connected, episodesCount }: Props)
             );
           })}
         </nav>
+      </div>
+
+      {/* System Stats */}
+      <div className="flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3 font-mono text-[10px]">
+          <StatPill label="Up" value={stats ? formatUptime(stats.uptime_secs) : "--:--:--"} />
+          <div className="w-px h-4 bg-[#1E2D3D]" />
+          <StatPill label="EPS" value={String(stats?.episodes_count ?? episodesCount)} color="#10B981" />
+          <div className="w-px h-4 bg-[#1E2D3D]" />
+          <StatPill label="Lat" value={stats ? `${stats.sonic_latency_ms?.toFixed(0) ?? '--'}ms` : "--"} />
+          <div className="w-px h-4 bg-[#1E2D3D]" />
+          <StatPill label="Emb" value={stats ? stats.embed_score_avg?.toFixed(2) ?? '--' : "--"} />
+          <div className="w-px h-4 bg-[#1E2D3D]" />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className={`w-1.5 h-1.5 rounded-full transition-all ${
+            connected
+              ? "bg-[#10B981] shadow-[0_0_6px_rgba(16,185,129,0.8)]"
+              : "bg-[#F43F5E] shadow-[0_0_6px_rgba(244,63,94,0.8)]"
+          }`} />
+          <span className={`font-barlow font-black tracking-[2px] text-[10px] uppercase ${
+            connected ? "text-[#10B981]" : "text-[#F43F5E]"
+          }`}>
+            {connected ? "Online" : "Offline"}
+          </span>
+        </div>
+      </div>
+    </header>
+  );
+}
