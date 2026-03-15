@@ -21,7 +21,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }>
 export default function EpisodeQueue({ queue, currentEpisodeId }: Props) {
   return (
     <div className="bg-[#0D1117] border-t border-[#1E2D3D]">
-      <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto scrollbar-thin">
+      <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto scrollbar-thin" aria-label="Episode Queue">
         <span className="font-barlow font-black text-[9px] tracking-[3px] text-[#4A6278] uppercase shrink-0">
           Queue
         </span>
@@ -39,12 +39,14 @@ export default function EpisodeQueue({ queue, currentEpisodeId }: Props) {
           return (
             <div
               key={ep.episode_id}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded shrink-0 border transition-all duration-200 ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded shrink-0 border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9] ${
                 isActive
                   ? "border-[#F43F5E]/40 bg-[#F43F5E]/5 shadow-[0_0_12px_rgba(244,63,94,0.08)]"
-                  : "border-[#1E2D3D] bg-[#0D1117] hover:border-[#2A4060] hover:bg-[#111820]"
+                  : "border-[#1E2D3D] bg-[#0D1117] hover:border-[#2A4060] hover:bg-[#111820] hover:shadow-[0_0_8px_rgba(14,165,233,0.08)]"
               }`}
               title={title}
+              tabIndex={0}
+              aria-label={`Episode: ${title}, Status: ${style.label}`}
             >
               {/* Status Badge */}
               <span
@@ -53,12 +55,13 @@ export default function EpisodeQueue({ queue, currentEpisodeId }: Props) {
                     ? "animate-pulse"
                     : ""
                 }`}
+                aria-label={`Status: ${style.label}`}
               >
                 {style.label}
               </span>
 
               {/* Episode Title (truncated) */}
-              <span className="font-inter text-[10px] text-[#7A9AB5] max-w-[120px] truncate">
+              <span className="font-inter text-[10px] text-[#7A9AB5] max-w-[120px] truncate" aria-label={`Title: ${title}`}> 
                 {title}
               </span>
             </div>
