@@ -73,31 +73,7 @@ export default function GlobalTopBar({ stats, connected, episodesCount }: Props)
               </Link>
             );
           })}
-                                      : "text-[#4A6278] hover:text-[#8AAFCC] hover:bg-[#0EA5E9]/5 hover:shadow-[0_0_8px_rgba(14,165,233,0.08)]"
-                                  }`}
-                                  aria-label={item.label}
-                                  tabIndex={0}
-                                >
-                                  {item.label}
-                                </Link>
-                              );
-                            })}
-                          </nav>
-
-                          {/* System Stats */}
-                          <div className="flex items-center gap-3">
-                            <div className="hidden lg:flex items-center gap-3 font-mono text-[10px]">
-                              <StatPill label="Up" value={stats ? formatUptime(stats.uptime_secs) : "--:--:--"} />
-                              <div className="w-px h-4 bg-[#1E2D3D]" />
-                              <StatPill label="EPS" value={String(stats?.episodes_count ?? episodesCount)} color="#10B981" />
-                              <div className="w-px h-4 bg-[#1E2D3D]" />
-                              <StatPill label="Lat" value={stats ? `${stats.sonic_latency_ms.toFixed(0)}ms` : "--"} />
-                              <div className="w-px h-4 bg-[#1E2D3D]" />
-                              <StatPill label="Emb" value={stats ? stats.embed_score_avg.toFixed(2) : "--"} />
-                              <div className="w-px h-4 bg-[#1E2D3D]" />
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className={`w-1.5 h-1.5 rounded-full transition-all ${
+        </nav>
                                 connected
                                   ? "bg-[#10B981] shadow-[0_0_6px_rgba(16,185,129,0.8)]"
                                   : "bg-[#F43F5E] shadow-[0_0_6px_rgba(244,63,94,0.8)]"
