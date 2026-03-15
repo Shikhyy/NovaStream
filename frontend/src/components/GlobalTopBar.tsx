@@ -74,16 +74,3 @@ export default function GlobalTopBar({ stats, connected, episodesCount }: Props)
             );
           })}
         </nav>
-                                connected
-                                  ? "bg-[#10B981] shadow-[0_0_6px_rgba(16,185,129,0.8)]"
-                                  : "bg-[#F43F5E] shadow-[0_0_6px_rgba(244,63,94,0.8)]"
-                              }`} />
-                              <span className={`font-barlow font-black tracking-[2px] text-[10px] uppercase ${
-                                connected ? "text-[#10B981]" : "text-[#F43F5E]"
-                              }`}>
-                                {connected ? "Online" : "Offline"}
-                              </span>
-                            </div>
-                          </div>
-                        </header>
-                      );
