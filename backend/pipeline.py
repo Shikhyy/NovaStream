@@ -24,6 +24,7 @@ episode_queue: List[EpisodeJob] = []
 current_episode: EpisodeJob | None = None
 pipeline_running = False
 MAX_SCENES_PER_EPISODE = max(1, min(4, int(os.getenv("NOVA_MAX_SCENES_PER_EPISODE", "2"))))
+MAX_QUEUE_SIZE = 20  # Cap queue to limit memory on free-tier instances
 
 
 async def broadcast_log(agent_id: str, level: str, message: str):
@@ -42,6 +43,9 @@ async def produce_episode() -> EpisodeJob:
     job = EpisodeJob(source_headline=headline)
     current_episode = job
     episode_queue.append(job)
+    # Trim old episodes to cap memory usage
+    if len(episode_queue) > MAX_QUEUE_SIZE:
+        episode_queue[:] = episode_queue[-MAX_QUEUE_SIZE:]
 
     await broadcast_log("PIPELINE", "info", f"═══ Episode {job.episode_id} started ═══")
     await broadcast_log("PIPELINE", "info", f"Headline: {headline}")

@@ -34,6 +34,7 @@ FALLBACK_HEADLINES = [
 ]
 
 _used_headlines: List[str] = []
+_MAX_USED_HEADLINES = 100
 
 
 async def fetch_headline() -> str:
@@ -87,4 +88,7 @@ async def fetch_headline() -> str:
         available = FALLBACK_HEADLINES[:]
     headline = random.choice(available)
     _used_headlines.append(headline)
+    # Trim to cap memory usage
+    if len(_used_headlines) > _MAX_USED_HEADLINES:
+        _used_headlines[:] = _used_headlines[-_MAX_USED_HEADLINES:]
     return headline

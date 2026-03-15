@@ -8,7 +8,6 @@ import os
 import logging
 from pathlib import Path
 
-import boto3
 import httpx
 from dotenv import load_dotenv
 
@@ -33,10 +32,12 @@ async def _download_video(url: str, dest: Path) -> bool:
         return False
     try:
         async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-            resp = await client.get(url)
-            if resp.status_code == 200:
-                dest.write_bytes(resp.content)
-                return True
+            async with client.stream("GET", url) as resp:
+                if resp.status_code == 200:
+                    with open(dest, "wb") as f:
+                        async for chunk in resp.aiter_bytes(chunk_size=65536):
+                            f.write(chunk)
+                    return True
     except Exception as e:
         logger.error(f"Download failed: {e}")
     return False
@@ -240,8 +241,11 @@ async def _upload_to_supabase(file_path: Path, episode_id: str, broadcast_log) -
     }
 
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(upload_url, headers=headers, content=file_path.read_bytes())
+        file_size = file_path.stat().st_size
+        upload_timeout = max(60, file_size // 100_000)  # Scale timeout with file size
+        async with httpx.AsyncClient(timeout=upload_timeout) as client:
+            with open(file_path, "rb") as f:
+                resp = await client.post(upload_url, headers=headers, content=f)
 
         if resp.status_code in (200, 201):
             await broadcast_log("EDITOR", "success", f"Uploaded to Supabase: {object_key}")
@@ -260,6 +264,7 @@ async def _upload_to_s3(file_path: Path, episode_id: str, broadcast_log) -> str:
         return ""
 
     try:
+        import boto3
         s3 = boto3.client("s3")
         key = f"episodes/episode_{episode_id}.mp4"
         s3.upload_file(

@@ -232,6 +232,7 @@ async def _generate_speech_with_sonic(
         # Write raw PCM audio, then convert to MP3 with FFmpeg
         raw_path = output_path.with_suffix(".pcm")
         raw_path.write_bytes(b"".join(audio_chunks))
+        audio_chunks.clear()  # Free memory immediately
 
         # Convert raw PCM (24kHz, 16-bit, mono) to MP3
         proc = await asyncio.create_subprocess_exec(

@@ -17,8 +17,9 @@ logger = logging.getLogger("novastream.casting")
 
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "")
 
-# Cache for Pexels search results
+# Cache for Pexels search results (capped to limit memory)
 _pexels_cache: dict[str, List[dict]] = {}
+_PEXELS_CACHE_MAX = 50
 
 
 def _extract_keywords(text: str) -> list[str]:
@@ -213,6 +214,10 @@ async def _search_pexels_videos(query: str, per_page: int = 5) -> List[dict]:
                         "duration": v.get("duration", 0),
                         "video_id": v.get("id"),
                     })
+            # Evict oldest entries if cache is full
+            if len(_pexels_cache) >= _PEXELS_CACHE_MAX:
+                oldest = next(iter(_pexels_cache))
+                del _pexels_cache[oldest]
             _pexels_cache[cache_key] = results
             return results
 
