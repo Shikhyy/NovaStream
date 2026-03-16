@@ -73,6 +73,7 @@ export default function VideoPlayer({ nowPlaying }: Props) {
     };
   }, [videoSrc]);
 
+  // Load & play when source changes (muted state handled separately)
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !displaySrc) return;
@@ -85,12 +86,17 @@ export default function VideoPlayer({ nowPlaying }: Props) {
       setPlayFailed(true);
       setPlaybackState("error");
     });
-  }, [displaySrc, muted]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displaySrc]);
 
   const handleUnmute = () => {
     setMuted(false);
     if (videoRef.current) {
       videoRef.current.muted = false;
+      // Re-trigger play in the user gesture context so the browser allows unmuted audio
+      if (videoRef.current.paused) {
+        videoRef.current.play().catch(() => {});
+      }
     }
   };
 
