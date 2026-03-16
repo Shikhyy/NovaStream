@@ -1,113 +1,212 @@
-# 🌌 NovaStream 24/7 — The Infinite Broadcast
+<div align="center">
 
-<p align="center">
-  <b>Fully autonomous AI-powered television network.</b><br>
-  Without any human intervention, NovaStream continuously monitors the internet for trending news headlines, transforms them into short-form video episodes with cinematic structure, voiceover narration, and music — then broadcasts them live via a web player.
-</p>
+# 🌌 NovaStream
+
+### *The Infinite AI Broadcast — 24/7, No Humans Required*
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org/)
+[![AWS Bedrock](https://img.shields.io/badge/AWS-Bedrock%20%7C%20Nova-orange?logo=amazonaws)](https://aws.amazon.com/bedrock/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+
+<br/>
+
+> **NovaStream** is a fully autonomous, AI-powered television network.  
+> It continuously monitors the internet for breaking news, transforms headlines into  
+> cinematic short-form video episodes — complete with scripted scenes, voiceover narration,  
+> and matched stock footage — then broadcasts them live, 24/7, with zero human intervention.
+
+<br/>
+
+</div>
 
 ---
 
-## 🏗 Architecture
+## ✨ What is NovaStream?
 
-NovaStream operates using a multi-agent backend architecture tightly integrated with **AWS Bedrock** and **Supabase**, broadcasting directly to a visually stunning **Next.js** frontend via WebSockets.
+NovaStream is an end-to-end agentic media pipeline built on **Amazon Nova foundation models** via **AWS Bedrock**. Give it the internet, and it gives you a television channel.
 
-```mermaid
-graph LR
-    A[Headlines API] --> B[Showrunner]
-    B --> C[Casting + Voice]
-    C --> D[Editor/FFmpeg]
-    D --> E[Broadcaster]
-    E --> F[Supabase Storage]
-    E --> G[WebSocket Server]
-    G --> H[Next.js Live Player]
+Every few minutes, the system:
+
+1. 📰 **Fetches** breaking news headlines from the live web
+2. 🎬 **Produces** a fully scripted, multi-scene episode using *Amazon Nova 2 Lite*
+3. 🎙️ **Voices** the narration scene-by-scene using *Amazon Nova 2 Sonic* (TTS)
+4. 🎞️ **Casts** matching cinematic stock footage via the Pexels API
+5. ✂️ **Edits** everything into a final broadcast-ready video with FFmpeg
+6. 📡 **Broadcasts** the episode live to a web player over WebSockets
+
+---
+
+## 🤖 Amazon Nova — The Intelligence Behind NovaStream
+
+NovaStream is purpose-built around **Amazon Nova**, AWS's latest generation of frontier foundation models. Nova models are invoked through **Amazon Bedrock** — AWS's fully managed AI platform — and power every creative and generative step of the pipeline.
+
+| Nova Model | Model ID | Role in NovaStream |
+|---|---|---|
+| **Amazon Nova 2 Lite** | `us.amazon.nova-2-lite-v1:0` | The *Showrunner* — takes a raw news headline and produces a structured JSON production blueprint: scene count, scripts, visual themes, and narration copy |
+| **Amazon Nova 2 Sonic** | `us.amazon.nova-2-sonic-v1:0` | The *Voice Actor* — performs hyper-realistic Text-to-Speech synthesis, narrating each scene with natural intonation and broadcast-quality audio |
+
+**Why Amazon Nova?**
+- **Speed** — Nova Lite delivers sub-second structured JSON generation, keeping the pipeline latency low enough for continuous broadcasting.
+- **Quality** — Nova Sonic produces broadcast-quality voice output indistinguishable from a professional narrator.
+- **Cost Efficiency** — Nova's competitive token pricing makes running a 24/7 autonomous pipeline economically viable.
+- **Bedrock Integration** — Seamless `boto3` integration means no custom inference servers, no model hosting, and no ops overhead.
+
+### AWS Services Used
+
+```
+AWS Bedrock  ──►  Amazon Nova 2 Lite   (Showrunner: script & scene generation)
+             ──►  Amazon Nova 2 Sonic  (Voice Actor: TTS narration synthesis)
+AWS IAM      ──►  Secure credential management via boto3 / STS
 ```
 
-### 🤖 The Agent Pipeline
-
-| Agent | Role | AI Model / Tech |
-|-------|------|-----------------|
-| **Showrunner** | Generates production blueprint JSON from headline | Amazon Nova 2 Lite |
-| **Casting Director** | Matches scenes to stock video via smart query expansion and quality ranking | Pexels API + custom ranking |
-| **Voice Actor** | Synthesizes voiceover narration per scene | Amazon Nova 2 Sonic |
-| **Editor** | Stitches video + audio into final episode via FFmpeg | FFmpeg |
-
 ---
 
-## ☁️ How AWS is Used in NovaStream
+## 🏗️ Architecture
 
-NovaStream relies heavily on **Amazon Web Services (AWS)** to power its core artificial intelligence logic. The entire agentic workflow is built around the **Amazon Bedrock** ecosystem to leverage the cutting-edge **Amazon Nova** foundation models.
+```mermaid
+graph TD
+    A[📰 NewsAPI<br/>Breaking Headlines] --> B
 
-Here is how AWS is utilized:
+    subgraph "🤖 Agent Pipeline (Python / FastAPI)"
+        B[🎬 Showrunner Agent<br/>Amazon Nova 2 Lite] --> C
+        C[🎭 Casting Director<br/>Pexels API + Ranking] --> D
+        D[🎙️ Voice Actor Agent<br/>Amazon Nova 2 Sonic] --> E
+        E[✂️ Editor Agent<br/>FFmpeg]
+    end
 
-1. **Amazon Nova 2 Lite (`amazon.nova-2-lite-v1:0`)**:
-   - Used by the **Showrunner Agent** to dynamically act as a TV producer. It takes a raw news headline and generates a structured, multi-scene production blueprint (JSON format) containing scripts, visual cues, and narrations.
-2. **Amazon Nova 2 Sonic (`amazon.nova-2-sonic-v1:0`)**:
-   - Used by the **Voice Actor Agent** for hyper-realistic Text-to-Speech (TTS) synthesis. It breathes life into the Showrunner's script, voicing the news broadcast scene-by-scene.
-3. **AWS Identity and Access Management (IAM)**:
-   - For secure, scalable access, NovaStream connects to Bedrock using either short-term STS credentials or long-term IAM API credentials via `boto3`.
+    E --> F[☁️ Supabase Storage<br/>Episode CDN]
+    E --> G[📡 WebSocket Broadcaster]
+    G --> H[🖥️ Next.js Live Player<br/>localhost:3000]
+```
 
-> **💡 Cost Savings & Local Fallbacks:**
-> To ensure AWS Bedrock credits remain predictable during development, NovaStream features built-in **Low-Cost Modes**. You can cap the number of generated scenes per episode (`NOVA_MAX_SCENES_PER_EPISODE`) and rely on lightweight stock-footage matching heuristics.
+### Agent Breakdown
+
+| Agent | File | Responsibility |
+|---|---|---|
+| **Showrunner** | `agents/showrunner.py` | Nova 2 Lite prompt → structured JSON episode blueprint |
+| **Casting Director** | `agents/casting.py` | Query expansion + Pexels video search + quality ranking |
+| **Voice Actor** | `agents/voice.py` | Nova 2 Sonic streaming TTS → per-scene `.mp3` audio |
+| **Editor** | `agents/editor.py` | FFmpeg scene stitching → final `.mp4` broadcast episode |
+| **Broadcaster** | `broadcaster.py` | WebSocket push of episode metadata + video URL to frontend |
 
 ---
 
 ## 💻 Tech Stack
 
-- **Backend**: Python 3.11+, FastAPI, WebSockets, FFmpeg, Asyncio
-- **Frontend**: Next.js 14, React, Tailwind CSS
-- **AI / Cloud Services**: Amazon Bedrock (Nova family), Boto3
-- **Storage**: Supabase Storage (Migrated from static S3)
-- **External APIs**: Pexels Video API, NewsAPI
-- **Deployment**: Docker, docker-compose
+| Layer | Technology |
+|---|---|
+| **AI Models** | Amazon Nova 2 Lite, Amazon Nova 2 Sonic (via AWS Bedrock) |
+| **Backend** | Python 3.11, FastAPI, Asyncio, WebSockets |
+| **Video Processing** | FFmpeg 6.0+ |
+| **Frontend** | Next.js 14, React, Tailwind CSS |
+| **Storage** | Supabase Storage |
+| **External APIs** | NewsAPI, Pexels Video API |
+| **Infrastructure** | Docker, docker-compose, Render |
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.11+
-- Node.js 20+
-- **FFmpeg 6.0+** installed locally (`brew install ffmpeg`)
-- **AWS API Keys** (with `us-east-1` Bedrock Nova access)
-- **Supabase Service Key**
-- **Pexels API Key**
 
-### 1. Configuration
-Clone the repository and configure your environment variables securely:
+- Python **3.11+**
+- Node.js **20+**
+- **FFmpeg 6.0+** — `brew install ffmpeg` (macOS) / `apt install ffmpeg` (Linux)
+- **AWS credentials** with `us-east-1` Bedrock access (Nova 2 Lite + Nova 2 Sonic)
+- **Supabase** project with a storage bucket
+- **Pexels** API key
+- **NewsAPI** key
+
+### 1. Clone & Configure
+
 ```bash
+git clone https://github.com/your-username/novastream.git
+cd novastream
 cp .env.example .env
-# Edit .env with your specific AWS, Supabase, and Pexels keys.
 ```
-*(Note: Your `.env` file is safely ignored by Git to prevent accidental AWS key leaks).*
 
-### 2. Start the Backend
+Edit `.env` with your credentials:
+
+```env
+# AWS (Bedrock — Nova models)
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=us-east-1
+
+# Nova model IDs
+NOVA_LITE_MODEL_ID=us.amazon.nova-2-lite-v1:0
+NOVA_SONIC_MODEL_ID=us.amazon.nova-2-sonic-v1:0
+
+# External APIs
+NEWSAPI_KEY=...
+PEXELS_API_KEY=...
+
+# Supabase Storage
+SUPABASE_URL=...
+SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_BUCKET=...
+```
+
+> ⚠️ `.env` is gitignored — your AWS keys will never be accidentally committed.
+
+### 2. Run with Docker *(Recommended)*
+
+```bash
+docker-compose up --build
+```
+
+### 3. Run Manually
+
+**Backend:**
 ```bash
 cd backend
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 python main.py
 ```
 
-### 3. Start the Frontend Live Player
-In a new terminal:
+**Frontend** *(new terminal)*:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-### 4. Docker (Alternative)
-Run everything natively:
-```bash
-docker-compose up --build
-```
-Open [http://localhost:3000](http://localhost:3000) to view the live infinite broadcast!
+Open **[http://localhost:3000](http://localhost:3000)** — the infinite broadcast is live. 📺
 
 ---
 
-## 🏆 Hackathon Categories
+## ⚙️ Configuration Reference
+
+| Variable | Description | Default |
+|---|---|---|
+| `NOVA_MAX_SCENES_PER_EPISODE` | Cap scenes per episode (cost control) | `2` |
+| `SHOWRUNNER_MAX_TOKENS` | Max tokens for Nova Lite generation | `500` |
+| `SHOWRUNNER_TEMPERATURE` | Nova Lite creativity (0.0–1.0) | `0.4` |
+| `SHOWRUNNER_MAX_RETRIES` | Retry attempts on Bedrock failure | `1` |
+
+> **💡 Cost Tip:** Keep `NOVA_MAX_SCENES_PER_EPISODE=2` during development to minimize Bedrock token usage.
+
+---
+
+## 🏆 Hackathon
+
 Built for the **Amazon Nova AI Hackathon — March 2026**.
-- **Agentic AI**: Multi-agent orchestration with autonomous state transitions.
-- **Multimodal Understanding**: Cross-model pipeline using Nova Lite text generation, Sonic TTS, and Embeddings for full A/V production.
-- **Multimodal Understanding**: Cross-model pipeline using Nova Lite text generation, Sonic TTS, and intelligent stock-footage matching for full A/V production.
+
+- 🧠 **Agentic AI** — Fully autonomous multi-agent pipeline with no human checkpoints
+- 🎙️ **Multimodal Generation** — Cross-model pipeline spanning text (Nova Lite), speech (Nova Sonic), and video (FFmpeg + Pexels)
+- 📡 **Real-Time Streaming** — Live WebSocket broadcast of AI-generated television
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](./LICENSE) file for details.
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ and Amazon Nova · Powered by AWS Bedrock</sub>
+</div>
