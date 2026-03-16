@@ -15,7 +15,7 @@ from models import Blueprint, EpisodeJob, EpisodeStatus
 load_dotenv()
 logger = logging.getLogger("novastream.showrunner")
 
-NOVA_LITE_MODEL_ID = os.getenv("NOVA_LITE_MODEL_ID", "amazon.nova-2-lite-v1:0")
+NOVA_LITE_MODEL_ID = os.getenv("NOVA_LITE_MODEL_ID", "us.amazon.nova-2-lite-v1:0")
 AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 SHOWRUNNER_MAX_RETRIES = max(1, int(os.getenv("SHOWRUNNER_MAX_RETRIES", "1")))
 SHOWRUNNER_MAX_TOKENS = max(200, int(os.getenv("SHOWRUNNER_MAX_TOKENS", "500")))

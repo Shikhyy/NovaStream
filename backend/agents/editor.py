@@ -252,8 +252,8 @@ async def _upload_to_supabase(file_path: Path, episode_id: str, broadcast_log) -
         file_size = file_path.stat().st_size
         upload_timeout = max(60, file_size // 100_000)  # Scale timeout with file size
         async with httpx.AsyncClient(timeout=upload_timeout) as client:
-            with open(file_path, "rb") as f:
-                resp = await client.post(upload_url, headers=headers, content=f)
+            file_bytes = file_path.read_bytes()
+            resp = await client.post(upload_url, headers=headers, content=file_bytes)
 
         if resp.status_code in (200, 201):
             await broadcast_log("EDITOR", "success", f"Uploaded to Supabase: {object_key}")

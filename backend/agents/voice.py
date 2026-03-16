@@ -18,7 +18,7 @@ from models import EpisodeJob, EpisodeStatus
 load_dotenv()
 logger = logging.getLogger("novastream.voice")
 
-NOVA_SONIC_MODEL_ID = os.getenv("NOVA_SONIC_MODEL_ID", "amazon.nova-2-sonic-v1:0")
+NOVA_SONIC_MODEL_ID = os.getenv("NOVA_SONIC_MODEL_ID", "us.amazon.nova-2-sonic-v1:0")
 AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 OUTPUT_DIR = Path("/tmp/novastream/audio")
 
@@ -98,7 +98,8 @@ async def _generate_speech_with_sonic(
                     elif "promptEnd" in event or "sessionEnd" in event:
                         done_event.set()
                         return
-        except Exception:
+        except Exception as e:
+            logger.error(f"collect_audio error: {e}")
             done_event.set()
 
     reader_task = asyncio.create_task(collect_audio())
