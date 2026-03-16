@@ -79,6 +79,7 @@ graph TD
     E --> F[☁️ Supabase Storage<br/>Episode CDN]
     E --> G[📡 WebSocket Broadcaster]
     G --> H[🖥️ Next.js Live Player<br/>localhost:3000]
+    G --> H[🖥️ Next.js Live Player<br/>novaaastream.vercel.app]
 ```
 
 ### Agent Breakdown
