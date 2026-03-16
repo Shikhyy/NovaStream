@@ -7,6 +7,7 @@ import time
 import logging
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import List
 
 from models import EpisodeJob, EpisodeStatus
@@ -24,7 +25,7 @@ episode_queue: List[EpisodeJob] = []
 current_episode: EpisodeJob | None = None
 pipeline_running = False
 MAX_SCENES_PER_EPISODE = max(1, min(4, int(os.getenv("NOVA_MAX_SCENES_PER_EPISODE", "2"))))
-MAX_QUEUE_SIZE = 20  # Cap queue to limit memory on free-tier instances
+MAX_QUEUE_SIZE = 10  # Cap queue to limit memory on free-tier instances
 
 
 async def broadcast_log(agent_id: str, level: str, message: str):
@@ -90,6 +91,13 @@ async def produce_episode() -> EpisodeJob:
     job = await run_editor(job, broadcast_log)
     await manager.broadcast_queue(episode_queue[-10:])
 
+    # Clean up audio files to free disk space
+    for audio_path in job.audio_files:
+        try:
+            Path(audio_path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
     if job.status != EpisodeStatus.FAILED:
         job.status = EpisodeStatus.READY
         job.completed_at = datetime.utcnow()
@@ -126,8 +134,8 @@ async def run_pipeline_loop():
                     s.duration_seconds for s in (job.blueprint.scenes if job.blueprint else [])
                 )
                 await broadcast_log("PIPELINE", "info",
-                    f"Broadcasting episode {job.episode_id} ({total_duration}s). Next in {total_duration + 5}s...")
-                await asyncio.sleep(max(total_duration, 30) + 5)
+                    f"Broadcasting episode {job.episode_id} ({total_duration}s). Next in {max(total_duration, 45) + 5}s...")
+                await asyncio.sleep(max(total_duration, 45) + 5)
             else:
                 # On failure, wait a bit then try next headline
                 await asyncio.sleep(10)

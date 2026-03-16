@@ -19,7 +19,7 @@ PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "")
 
 # Cache for Pexels search results (capped to limit memory)
 _pexels_cache: dict[str, List[dict]] = {}
-_PEXELS_CACHE_MAX = 50
+_PEXELS_CACHE_MAX = 30
 
 
 def _extract_keywords(text: str) -> list[str]:
@@ -251,7 +251,7 @@ async def run_casting(job: EpisodeJob, broadcast_log) -> EpisodeJob:
                 best_query = ""
 
                 for candidate_query in search_queries:
-                    videos = await _search_pexels_videos(candidate_query, per_page=8)
+                    videos = await _search_pexels_videos(candidate_query, per_page=5)
                     for video in videos:
                         score = _ranked_video_score(
                             scene_query=query,

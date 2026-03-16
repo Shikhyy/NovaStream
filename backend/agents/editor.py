@@ -80,7 +80,7 @@ async def run_editor(job: EpisodeJob, broadcast_log) -> EpisodeJob:
 
     for i, scene in enumerate(job.blueprint.scenes):
         scene_num = scene.scene_number
-        await broadcast_log("EDITOR", "info", f"Processing scene {scene_num}/4...")
+        await broadcast_log("EDITOR", "info", f"Processing scene {scene_num}/{len(job.blueprint.scenes)}...")
 
         # Get video source
         asset = next((a for a in job.scene_assets if a.scene_number == scene_num), None)
@@ -104,9 +104,9 @@ async def run_editor(job: EpisodeJob, broadcast_log) -> EpisodeJob:
         norm_ok = await _run_ffmpeg([
             "-i", str(video_path),
             "-t", str(scene.duration_seconds),
-            "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1",
-            "-r", "30",
-            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+            "-vf", "scale=854:480:force_original_aspect_ratio=decrease,pad=854:480:(ow-iw)/2:(oh-ih)/2,setsar=1",
+            "-r", "24",
+            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
             "-an",  # strip original audio
             str(normalized_path),
         ], broadcast_log, f"normalize scene {scene_num}")
@@ -170,6 +170,14 @@ async def run_editor(job: EpisodeJob, broadcast_log) -> EpisodeJob:
         ], broadcast_log, "concat re-encode")
 
     if success and final_path.exists():
+        # Clean up old episode files to prevent disk fill (keep last 5)
+        try:
+            episode_files = sorted(OUTPUT_DIR.glob("episode_*.mp4"), key=lambda p: p.stat().st_mtime)
+            for old_file in episode_files[:-5]:
+                old_file.unlink(missing_ok=True)
+        except Exception:
+            pass
+
         # Upload to remote storage if configured
         video_url = await _upload_to_remote_storage(final_path, job.episode_id, broadcast_log)
         if video_url:
@@ -198,8 +206,8 @@ async def _generate_placeholder_video(path: Path, duration: int) -> None:
     """Generate a placeholder video with a solid color background."""
     cmd = [
         "ffmpeg", "-y",
-        "-f", "lavfi", "-i", f"color=c=0x0D1117:size=1280x720:rate=30:duration={duration}",
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-f", "lavfi", "-i", f"color=c=0x0D1117:size=854x480:rate=24:duration={duration}",
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
         "-pix_fmt", "yuv420p",
         str(path),
     ]

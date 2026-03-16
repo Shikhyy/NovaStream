@@ -239,7 +239,7 @@ async def _generate_speech_with_sonic(
             "ffmpeg", "-y",
             "-f", "s16le", "-ar", "24000", "-ac", "1",
             "-i", str(raw_path),
-            "-c:a", "libmp3lame", "-q:a", "2",
+            "-c:a", "libmp3lame", "-q:a", "5",
             str(output_path),
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,

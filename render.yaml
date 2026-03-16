@@ -21,7 +21,7 @@ services:
       - key: SHOWRUNNER_MAX_RETRIES
         value: "1"
       - key: SHOWRUNNER_MAX_TOKENS
-        value: "500"
+        value: "400"
       - key: SUPABASE_BUCKET
         value: Episodes
       - key: SUPABASE_PATH_PREFIX

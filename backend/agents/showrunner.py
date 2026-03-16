@@ -21,7 +21,13 @@ SHOWRUNNER_MAX_RETRIES = max(1, int(os.getenv("SHOWRUNNER_MAX_RETRIES", "1")))
 SHOWRUNNER_MAX_TOKENS = max(200, int(os.getenv("SHOWRUNNER_MAX_TOKENS", "500")))
 SHOWRUNNER_TEMPERATURE = float(os.getenv("SHOWRUNNER_TEMPERATURE", "0.4"))
 
-SYSTEM_PROMPT = """You are a TV show producer. Given a news headline, create a Production Blueprint for a 60-second video episode.
+SYSTEM_PROMPT = """You are a TV show producer. Given a news headline, create a Production Blueprint for a 30-second video episode with exactly 2 scenes.
+
+The two scenes MUST be tightly interconnected:
+- Scene 1: Establish the core news story — what happened, where, and why it matters. Ground the viewer in the headline.
+- Scene 2: Directly build on Scene 1 — show the impact, reaction, or consequence. Reference specific elements from Scene 1 (people, places, events) so the narrative flows as one continuous story.
+
+Both scenes must stay anchored to the original headline throughout. Do NOT drift into unrelated topics.
 
 Return ONLY a valid JSON object matching the schema below. No markdown, no preamble, no explanation. If you cannot comply, return the JSON with empty strings.
 
@@ -40,11 +46,11 @@ JSON Schema:
 }
 
 Rules:
-- Exactly 4 scenes, scene_number 1 through 4
+- Exactly 2 scenes, scene_number 1 and 2
 - duration_seconds between 10 and 20
 - voiceover_script max 60 words per scene
 - visual_description should be vivid and specific for stock video matching
-- Total episode should tell a complete narrative arc: setup, development, climax, resolution
+- Scene 2's voiceover MUST reference or continue from Scene 1's narrative
 """
 
 
@@ -88,51 +94,35 @@ def _fallback_visuals(topic: str, keywords: list[str]) -> list[str]:
     topic_visuals = {
         "finance": [
             f"stock market trading screens showing {kw1} and {kw2} price movement",
-            f"oil refinery, commodities charts, and energy market visuals for {kw1}",
-            f"business district offices and traders reacting to {kw2}",
-            f"global financial map, charts, and economic data tied to {kw3}",
+            f"business district offices and traders reacting to {kw1} {kw2} impact",
         ],
         "space": [
             f"rocket launch pad and mission control screens about {kw1}",
-            f"astronaut training, moon mission hardware, and {kw2} visuals",
-            f"space agency press briefing and engineers discussing {kw3}",
-            f"planetary map, spacecraft animation, and countdown graphics",
+            f"space agency press briefing and engineers discussing {kw1} {kw2} mission",
         ],
         "politics": [
             f"government building exterior and podium remarks about {kw1}",
-            f"officials, flags, and media scrum focused on {kw2}",
-            f"public reaction, protest crowd, and interview clips about {kw3}",
-            f"world map, diplomacy visuals, and policy timeline graphics",
+            f"public reaction and media scrum responding to {kw1} {kw2} announcement",
         ],
         "crime": [
             f"police vehicles, crime scene tape, and investigators linked to {kw1}",
-            f"security footage style city street visuals related to {kw2}",
-            f"law enforcement press conference and courthouse exterior for {kw3}",
-            f"community gathering, candles, and ongoing investigation graphics",
+            f"law enforcement press conference and community response to {kw1} {kw2}",
         ],
         "health": [
             f"hospital corridor, medical staff, and patient care tied to {kw1}",
-            f"laboratory research, microscope, and treatment visuals for {kw2}",
-            f"doctor press briefing and healthcare workers discussing {kw3}",
-            f"medical charts, public health map, and recovery timeline graphics",
+            f"laboratory research and experts discussing {kw1} {kw2} implications",
         ],
         "climate": [
             f"extreme weather footage, storm clouds, and environmental impact of {kw1}",
-            f"emergency crews, damaged streets, and disaster response for {kw2}",
-            f"community cleanup, aerial aftermath, and rescue visuals about {kw3}",
-            f"global climate map, forecast graphics, and data overlays",
+            f"emergency crews and community response to {kw1} {kw2} aftermath",
         ],
         "technology": [
             f"technology lab, screens, and product visuals related to {kw1}",
-            f"engineers, robotics, and close-up hardware shots tied to {kw2}",
-            f"conference stage, keynote audience, and innovation footage for {kw3}",
-            f"futuristic data visualization and digital network animation",
+            f"engineers and industry experts reacting to {kw1} {kw2} breakthrough",
         ],
         "general": [
             f"headline graphics and newsroom visuals focused on {kw1} and {kw2}",
-            f"public reaction and on-the-ground footage related to {kw1}",
-            f"official statements and press conference visuals about {kw2} and {kw3}",
-            f"global map animation and data timeline tracking the story",
+            f"public reaction and expert analysis responding to {kw1} {kw2} story",
         ],
     }
     return topic_visuals[topic]
@@ -213,25 +203,13 @@ def _fallback_blueprint(headline: str) -> Blueprint:
             {
                 "scene_number": 1,
                 "visual_description": visuals[0],
-                "voiceover_script": f"Breaking news today. {headline}. This story has captured global attention.",
+                "voiceover_script": f"Breaking news today. {headline}. This story has captured global attention and is developing rapidly.",
                 "duration_seconds": 15,
             },
             {
                 "scene_number": 2,
                 "visual_description": visuals[1],
-                "voiceover_script": "Experts are weighing in from around the world, offering their analysis on what this means for the future.",
-                "duration_seconds": 15,
-            },
-            {
-                "scene_number": 3,
-                "visual_description": visuals[2],
-                "voiceover_script": "Public reaction has been swift and divided, with many taking to social media to share their thoughts.",
-                "duration_seconds": 15,
-            },
-            {
-                "scene_number": 4,
-                "visual_description": visuals[3],
-                "voiceover_script": "As this story continues to develop, one thing is certain. The world is watching closely.",
+                "voiceover_script": f"In the wake of this development, experts are weighing in on what {headline.split()[0:3] and ' '.join(headline.split()[0:3]) or 'this'} means for the future. The world is watching closely.",
                 "duration_seconds": 15,
             },
         ],
