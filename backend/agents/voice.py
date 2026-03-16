@@ -24,9 +24,9 @@ OUTPUT_DIR = Path("/tmp/novastream/audio")
 
 # Voice persona mapping by tone
 VOICE_CONFIG = {
-    "documentary": {"voiceId": "matthew", "style": "neutral, authoritative, calm news anchor"},
-    "satirical": {"voiceId": "tiffany", "style": "dry, deadpan, subtly amused"},
-    "dramatic": {"voiceId": "matthew", "style": "heightened gravitas, urgent, cinematic"},
+    "documentary": {"voiceId": "Matthew", "style": "neutral, authoritative, calm news anchor"},
+    "satirical": {"voiceId": "Ruth", "style": "dry, deadpan, subtly amused"},
+    "dramatic": {"voiceId": "Matthew", "style": "heightened gravitas, urgent, cinematic"},
 }
 
 

@@ -48,7 +48,7 @@ async def _run_ffmpeg(args: list[str], broadcast_log, label: str = "") -> bool:
     cmd = ["ffmpeg", "-y"] + args
     proc = await asyncio.create_subprocess_exec(
         *cmd,
-        stdout=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.DEVNULL,
         stderr=asyncio.subprocess.PIPE,
     )
     _, stderr = await proc.communicate()
@@ -104,9 +104,9 @@ async def run_editor(job: EpisodeJob, broadcast_log) -> EpisodeJob:
         norm_ok = await _run_ffmpeg([
             "-i", str(video_path),
             "-t", str(scene.duration_seconds),
-            "-vf", "scale=854:480:force_original_aspect_ratio=decrease,pad=854:480:(ow-iw)/2:(oh-ih)/2,setsar=1",
+            "-vf", "scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1",
             "-r", "24",
-            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "32",
             "-an",  # strip original audio
             str(normalized_path),
         ], broadcast_log, f"normalize scene {scene_num}")
@@ -182,6 +182,8 @@ async def run_editor(job: EpisodeJob, broadcast_log) -> EpisodeJob:
         video_url = await _upload_to_remote_storage(final_path, job.episode_id, broadcast_log)
         if video_url:
             job.video_url = video_url
+            # Remove local copy — video is on remote storage, free the disk
+            final_path.unlink(missing_ok=True)
         else:
             # Serve locally
             job.video_url = f"/episodes/episode_{job.episode_id}.mp4"
@@ -206,19 +208,19 @@ async def _generate_placeholder_video(path: Path, duration: int) -> None:
     """Generate a placeholder video with a solid color background."""
     cmd = [
         "ffmpeg", "-y",
-        "-f", "lavfi", "-i", f"color=c=0x0D1117:size=854x480:rate=24:duration={duration}",
-        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+        "-f", "lavfi", "-i", f"color=c=0x0D1117:size=640x360:rate=24:duration={duration}",
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "32",
         "-pix_fmt", "yuv420p",
         str(path),
     ]
     proc = await asyncio.create_subprocess_exec(
         *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
     )
-    _, stderr = await proc.communicate()
+    await proc.wait()
     if proc.returncode != 0:
-        logger.error(f"Placeholder video generation failed: {stderr.decode()[-200:]}")
+        logger.error(f"Placeholder video generation failed")
 
 
 async def _upload_to_remote_storage(file_path: Path, episode_id: str, broadcast_log) -> str:
@@ -252,8 +254,8 @@ async def _upload_to_supabase(file_path: Path, episode_id: str, broadcast_log) -
         file_size = file_path.stat().st_size
         upload_timeout = max(60, file_size // 100_000)  # Scale timeout with file size
         async with httpx.AsyncClient(timeout=upload_timeout) as client:
-            file_bytes = file_path.read_bytes()
-            resp = await client.post(upload_url, headers=headers, content=file_bytes)
+            with open(file_path, "rb") as f:
+                resp = await client.post(upload_url, headers=headers, content=f)
 
         if resp.status_code in (200, 201):
             await broadcast_log("EDITOR", "success", f"Uploaded to Supabase: {object_key}")

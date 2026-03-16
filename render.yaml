@@ -13,9 +13,9 @@ services:
       - key: AWS_DEFAULT_REGION
         value: us-east-1
       - key: NOVA_LITE_MODEL_ID
-        value: amazon.nova-2-lite-v1:0
+        value: us.amazon.nova-2-lite-v1:0
       - key: NOVA_SONIC_MODEL_ID
-        value: amazon.nova-2-sonic-v1:0
+        value: us.amazon.nova-2-sonic-v1:0
       - key: NOVA_MAX_SCENES_PER_EPISODE
         value: "2"
       - key: SHOWRUNNER_MAX_RETRIES
